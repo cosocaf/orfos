@@ -10,7 +10,7 @@ set(CMAKE_CXX_FLAGS_INIT " ")
 set(TOOLCHAIN_PREFIX "riscv64-unknown-elf-")
 
 set(CXX ${TOOLCHAIN_PREFIX}g++)
-set(AS ${TOOLCHAIN_PREFIX}as)
+set(AS ${TOOLCHAIN_PREFIX}g++)
 set(LD ${TOOLCHAIN_PREFIX}ld)
 
 set(CMAKE_CXX_COMPILER ${CXX})
