@@ -1,5 +1,6 @@
 #include <arch/riscv.h>
 #include <arch/riscv_macros.h>
+#include <ie/timer.h>
 
 #include "main.h"
 
@@ -7,6 +8,7 @@ extern "C" {
 void orfos_start() {
   using namespace orfos::kernel::arch;
   using namespace orfos::kernel::boot;
+  using namespace orfos::kernel;
 
   // M-mode Previous Privilegeを01(=S-mode)に変更する
   // mret後にS-modeへ移行する
@@ -41,7 +43,7 @@ void orfos_start() {
   // 0 < addr < 0x3fffffffffffffのアドレス空間に適用
   write_pmpaddr0(0x3fffffffffffff);
 
-  // TODO: timer
+  ie::initializeTimer();
 
   // tpをhartidに変更
   auto mhartid = read_mhartid();

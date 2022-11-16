@@ -20,7 +20,7 @@ namespace orfos::kernel::console {
         sign = false;
       }
 
-      size_t i = 0;
+      int i = 0;
       do {
         buf[i++] = digits[n % base];
       } while (n /= base);
@@ -45,10 +45,10 @@ namespace orfos::kernel::console {
     mutex::SpinMutex mutex;
   } // namespace
   void initialize() {
-    initialize_uart();
+    initializeUart();
   }
   void putc(char c) {
-    uart_putc_sync(c);
+    uartPutcSync(c);
   }
   void printf(const char* fmt, ...) {
     mutex::LockGuard guard(mutex);
@@ -56,7 +56,7 @@ namespace orfos::kernel::console {
     va_list ap;
     va_start(ap, fmt);
 
-    for (; *fmt; ++fmt) {
+    for (; *fmt != '\0'; ++fmt) {
       if (*fmt != '%') {
         putc(*fmt);
         continue;
@@ -77,6 +77,9 @@ namespace orfos::kernel::console {
           break;
         case 'x':
           print_int(va_arg(ap, int32_t), 16, true);
+          break;
+        case 'c':
+          putc(va_arg(ap, int));
           break;
         case 'p':
           print_ptr(va_arg(ap, uint64_t));
@@ -99,5 +102,27 @@ namespace orfos::kernel::console {
       }
     }
     va_end(ap);
+  }
+  void consoleInterrupt(char c) {
+    mutex::LockGuard guard(mutex);
+    switch (c) {
+      case '\b':
+      case '\x7f':
+        putc('\b');
+        putc(' ');
+        putc('\b');
+        break;
+      case '\0':
+        break;
+      default:
+        if (c == '\r') {
+          c = '\n';
+        }
+        putc(c);
+
+        if (c == '\n' || c == '\x04') {
+          // wakeup(&cons.r);
+        }
+    }
   }
 } // namespace orfos::kernel::console

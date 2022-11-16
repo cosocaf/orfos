@@ -2,6 +2,9 @@
 
 #include <mutex/lock_guard.h>
 #include <mutex/spin_mutex.h>
+#include <process/sleep.h>
+
+#include "console.h"
 
 namespace orfos::kernel::console {
   namespace {
@@ -31,8 +34,25 @@ namespace orfos::kernel::console {
     }
 
     mutex::SpinMutex mutex;
+    char buf[32];
+    size_t wpos;
+    size_t rpos;
+    void start() {
+      while (true) {
+        if (wpos == rpos) {
+          break;
+        }
+        if ((read_reg(LSR) & LSR_TX_IDLE) == 0) {
+          break;
+        }
+        auto c = buf[rpos % sizeof(buf)];
+        ++rpos;
+        process::wakeup(&rpos);
+        *reg(THR) = c;
+      }
+    }
   } // namespace
-  void initialize_uart() {
+  void initializeUart() {
     write_reg(IER, 0x00);
     write_reg(LCR, LCR_BAUD_LATCH);
     write_reg(0, 0x03);
@@ -41,13 +61,16 @@ namespace orfos::kernel::console {
     write_reg(FCR, FCR_FIFO_ENABLE | FCR_FIFO_CLEAR);
     write_reg(IER, IER_TX_ENABLE | IER_RX_ENABLE);
   }
-  void uart_putc(char c) {
+  void uartPutc(char c) {
     mutex::LockGuard guard(mutex);
-    if (read_reg(LSR) & LSR_TX_IDLE) {
-      write_reg(THR, c);
+    while (wpos == rpos + sizeof(buf)) {
+      process::sleep(&rpos, mutex);
     }
+    buf[wpos % sizeof(buf)] = c;
+    ++wpos;
+    start();
   }
-  void uart_putc_sync(char c) {
+  void uartPutcSync(char c) {
     mutex.push();
     while (!(read_reg(LSR) & LSR_TX_IDLE)) {
       // Wait
@@ -55,10 +78,19 @@ namespace orfos::kernel::console {
     write_reg(THR, c);
     mutex.pop();
   }
-  char uart_getc() {
+  char uartGetc() {
     if (read_reg(LSR) & 0x01) {
       return read_reg(RHR);
     }
     return '\0';
+  }
+  void uartInterrupt() {
+    while (true) {
+      auto c = uartGetc();
+      if (c == '\0') {
+        break;
+      }
+      consoleInterrupt(c);
+    }
   }
 } // namespace orfos::kernel::console

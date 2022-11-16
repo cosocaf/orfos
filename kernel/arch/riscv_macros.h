@@ -11,13 +11,14 @@
 
 #define MIE_MTIE (1 << 7)
 
+#define SSTATUS_SIE (1 << 1)
+#define SSTATUS_SPP (1 << 8)
+#define SSTATUS_SPIE (1 << 5)
+
 #define SIE_SEIE (1 << 9)
 #define SIE_STIE (1 << 5)
 #define SIE_SSIE (1 << 1)
 
-#define NUM_CPUS (8)
-
-#define CLINT (0x2000000)
-#define CLINT_MTIME (CLINT + 0xBFF8)
+#define SATP_SV39 (8ul << 60)
 
 #endif // ORFOS_KERNEL_ARCH_RISCV_MACROS_H_

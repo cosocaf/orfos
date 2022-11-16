@@ -1,6 +1,14 @@
 #!/bin/bash -e
 
 SCRIPT_DIR=$(cd $(dirname $0); pwd)
+OS=kernel.elf
+CPUS=1
+FS=$SCRIPT_DIR/../fs.img
+
+if [ ! -e $FS ]; then
+  # qemu-img create -f raw $FS 128M
+  touch $FS
+fi
 
 cd $SCRIPT_DIR/../
 
@@ -14,14 +22,6 @@ echo "Build succeeded."
 
 cd $SCRIPT_DIR/../build/kernel
 
-OS=kernel.elf
-CPUS=1
-FS=$SCRIPT_DIR/../fs.img
-
-if [ ! -e $FS ]; then
-  qemu-img create -f qcow2 $FS 4G
-fi
-
 echo "Start qemu..."
 
 qemu-system-riscv64 \
@@ -32,5 +32,5 @@ qemu-system-riscv64 \
   -smp $CPUS \
   -nographic \
   -global virtio-mmio.force-legacy=false \
-  -drive file=$FS,if=none,format=qcow2,id=x0 \
+  -drive file=$FS,if=none,format=raw,id=x0 \
   -device virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0

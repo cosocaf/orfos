@@ -128,7 +128,7 @@ namespace orfos::kernel::arch {
   }
   inline uint64_t read_stval() {
     uint64_t stval;
-    asm volatile("csrr %0, stval" : : "r"(stval));
+    asm volatile("csrr %0, stval" : "=r"(stval));
     return stval;
   }
 
@@ -157,6 +157,9 @@ namespace orfos::kernel::arch {
 
   inline void mret() {
     asm volatile("mret");
+  }
+  inline void wfi() {
+    asm volatile("wfi");
   }
 } // namespace orfos::kernel::arch
 

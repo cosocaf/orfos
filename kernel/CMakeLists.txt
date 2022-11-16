@@ -1,25 +1,5 @@
 cmake_minimum_required(VERSION 3.24)
 
-set(
-  COMMON_CXX_OPTIONS
-  -Wall
-  -Werror
-  -O0
-  -fno-omit-frame-pointer
-  -ggdb
-  -gdwarf-2
-  -MD
-  -mcmodel=medany
-  -ffreestanding
-  -fno-common
-  -nostdlib
-  -mno-relax
-  -fno-stack-protector
-  -fno-exceptions
-  -fno-pie
-  -no-pie
-)
-
 add_executable(
   kernel.elf
   boot/entry.S
@@ -28,6 +8,46 @@ add_executable(
   console/console.cpp
   console/uart.cpp
   mutex/spin_mutex.cpp
+  mutex/sleep_mutex.cpp
+  memory/page.cpp
+  memory/pte.cpp
+  memory/va.cpp
+  memory/page_table.cpp
+  memory/kvm.cpp
+  memory/uvm.cpp
+  memory/copy.cpp
+  process/context.S
+  process/context.cpp
+  process/process.cpp
+  process/cpu.cpp
+  process/scheduler.cpp
+  process/sleep.cpp
+  process/user_init_proc.cpp
+  process/init.S
+  ie/ie.cpp
+  ie/user_vector.S
+  ie/user_trap.cpp
+  ie/kernel_vector.S
+  ie/kernel_trap.cpp
+  ie/timer.cpp
+  ie/cause.cpp
+  ie/plic.cpp
+  fs/fs.cpp
+  fs/buffer.cpp
+  fs/block.cpp
+  fs/super_block.cpp
+  fs/inode.cpp
+  fs/log.cpp
+  fs/virtio.cpp
+  syscall/syscall.cpp
+  syscall/args.cpp
+  syscall/exec.cpp
+  elf/exec.cpp
+  lib/assert.cpp
+  lib/stdexcept.cpp
+  lib/string.cpp
+  lib/new.cpp
+  lib/panic.cpp
 )
 
 target_include_directories(

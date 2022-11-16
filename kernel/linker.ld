@@ -6,6 +6,12 @@ SECTIONS {
 
   .text : {
     *(.text .text.*)
+    . = ALIGN(0x1000);
+    _trampoline = .;
+    *(trampsec)
+    . = ALIGN(0x1000);
+    ASSERT(. - _trampoline == 0x1000, "error: trampoline larger than one page");
+    PROVIDE(endOfText = .);
   }
 
   .rodata : {
@@ -19,6 +25,10 @@ SECTIONS {
     . = ALIGN(16);
     *(.sdata .sdata.*)
     . = ALIGN(16);
+    PROVIDE(beginUserInitCode = .);
+    *(.userinit)
+    PROVIDE(endUserInitCode = .);
+    . = ALIGN(16);
     *(.data .data.*)
   }
 
@@ -30,5 +40,5 @@ SECTIONS {
   }
 
   . = ALIGN(4096);
-  PROVIDE(kernel_pages = .);
+  PROVIDE(kernelPages = .);
 }

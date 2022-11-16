@@ -1,4 +1,4 @@
-#include "../arch/riscv_macros.h"
+#include "../arch/config.h"
 
 .section .text
 .global _entry
