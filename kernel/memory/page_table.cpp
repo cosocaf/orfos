@@ -76,7 +76,22 @@ namespace orfos::kernel::memory {
     return pageTable->getEntry(0, virtualAddress);
   }
   uint64_t PageTable::walkAddress(VirtualAddress virtualAddress) {
-    return 0;
+    if (virtualAddress.address >= MAX_VIRTUAL_ADDRESS) {
+      return 0;
+    }
+
+    auto pte = walk(virtualAddress, false);
+    if (pte == nullptr) {
+      return 0;
+    }
+    if (!pte->pte.v) {
+      return 0;
+    }
+    if (!pte->pte.u) {
+      return 0;
+    }
+    auto pa = pte->toPhysicalAddress();
+    return pa;
   }
 
   PageTableEntry* PageTable::getEntry(int level,

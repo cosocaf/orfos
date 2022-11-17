@@ -42,5 +42,8 @@ target_include_directories(
 add_custom_command(
   TARGET make_disk POST_BUILD
   WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/../
-  COMMAND $<TARGET_FILE:make_disk> ${CMAKE_CURRENT_SOURCE_DIR}/../fs.img ${CMAKE_CURRENT_SOURCE_DIR}/../README.md
+  COMMAND $<TARGET_FILE:make_disk>
+    ${CMAKE_CURRENT_SOURCE_DIR}/../fs.img
+    ${CMAKE_CURRENT_SOURCE_DIR}/../README.md
+    $<TARGET_FILE:init>
 )
