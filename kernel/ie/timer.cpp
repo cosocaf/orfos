@@ -22,6 +22,7 @@ namespace orfos::kernel::ie {
   void initializeTimer() {
     auto hartid = arch::read_mhartid();
 
+    // 単位は100ns -> 100msに一回の割り込み
     constexpr uint64_t interval = 1'000'000;
     auto mtimecmp               = clintMtimeCmp(hartid);
     *mtimecmp = *reinterpret_cast<uint64_t*>(CLINT_MTIME) + interval;

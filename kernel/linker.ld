@@ -18,16 +18,16 @@ SECTIONS {
     . = ALIGN(16);
     *(.srodata .srodata.*)
     . = ALIGN(16);
+    PROVIDE(beginUserInitCode = .);
+    *(.userinit)
+    PROVIDE(endUserInitCode = .);
+    . = ALIGN(16);
     *(.rodata .rodata.*)
   }
 
   .data : {
     . = ALIGN(16);
     *(.sdata .sdata.*)
-    . = ALIGN(16);
-    PROVIDE(beginUserInitCode = .);
-    *(.userinit)
-    PROVIDE(endUserInitCode = .);
     . = ALIGN(16);
     *(.data .data.*)
   }

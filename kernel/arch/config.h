@@ -3,6 +3,7 @@
 
 #pragma once
 
+// カーネルのエントリポイント
 #define KERNEL_BASE 0x80000000ull
 #define MAX_VIRTUAL_ADDRESS (1ull << (9 + 9 + 9 + 12 - 1))
 
@@ -13,7 +14,8 @@
 #define UART0_IRQ 10
 #define VIRTIO0_IRQ 1
 
-#define NUM_CPUS (8)
+// hartの数
+#define NUM_CPUS 8
 
 #ifndef PAGE_SIZE
 #define PAGE_SIZE 4096
