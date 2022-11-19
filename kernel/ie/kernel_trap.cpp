@@ -21,7 +21,7 @@ namespace orfos::kernel::ie {
     auto cause = which(scause);
     if (cause == Cause::Unexpected) {
       auto stval = arch::read_stval();
-      console::printf("Unexpected interrupt/exception\n");
+      console::printf("Kernel trap: Unexpected interrupt/exception\n");
       console::printf("scause %p, sepc %p, stval %p\n", scause, sepc, stval);
       lib::panic("unexpected ie");
     }

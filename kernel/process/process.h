@@ -25,6 +25,7 @@ namespace orfos::kernel::process {
   struct Process {
     uint64_t pid;
     Process* parent;
+    std::vector<Process*> children;
     ProcessState state;
     mutex::SpinMutex mutex;
     Context context;
@@ -50,6 +51,9 @@ namespace orfos::kernel::process {
 
     Process* fork();
     void exit(int status);
+    bool wait(uint64_t address);
+
+    void growMemory(size_t size);
 
   private:
     void reparent();

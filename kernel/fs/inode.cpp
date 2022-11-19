@@ -50,7 +50,7 @@ namespace orfos::kernel::fs {
   } // namespace
 
   Inode* Inode::allocate(uint32_t device, int16_t type) {
-    for (uint32_t i = 0; i < superBlock.numInodes; ++i) {
+    for (uint32_t i = 1; i < superBlock.numInodes; ++i) {
       auto bp = bufferCache->get(device, iblock(i, superBlock));
       bp->read();
       auto dip = reinterpret_cast<DiskInode*>(bp->data) + i % INODES_PER_BLOCK;

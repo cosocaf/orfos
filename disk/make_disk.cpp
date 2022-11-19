@@ -112,9 +112,9 @@ void appendInode(uint32_t inum, void *xp, size_t n) {
 }
 
 void allocateBlock(uint32_t used) {
+  assert(used < fs::BLOCK_SIZE * 8);
   char buf[fs::BLOCK_SIZE];
   bzero(buf, fs::BLOCK_SIZE);
-  assert(used < fs::BLOCK_SIZE * 8);
   for (uint32_t i = 0; i < used; ++i) {
     buf[i / 8] |= (1 << (i % 8));
   }
@@ -127,7 +127,8 @@ int main(int argc, char **argv) {
     return 1;
   }
 
-  fsimg.open(argv[1], std::ios::in | std::ios::out | std::ios::binary);
+  fsimg.open(argv[1],
+             std::ios::in | std::ios::out | std::ios::trunc | std::ios::binary);
   if (!fsimg) {
     std::cerr << "Error: cannot open " << argv[1] << std::endl;
     return 2;
@@ -177,7 +178,8 @@ int main(int argc, char **argv) {
 
   for (int i = 2; i < argc; ++i) {
     std::ifstream istream(argv[i], std::ios::binary);
-    auto inum  = allocateInode(fs::T_FILE);
+    auto inum = allocateInode(fs::T_FILE);
+    bzero(&entry, sizeof(entry));
     entry.inum = convOrder<uint16_t>(inum);
 
     std::filesystem::path path(argv[i]);

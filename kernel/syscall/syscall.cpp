@@ -11,6 +11,7 @@
 #include "mknod.h"
 #include "open.h"
 #include "read.h"
+#include "wait.h"
 #include "write.h"
 
 namespace orfos::kernel::syscall {
@@ -36,6 +37,7 @@ namespace orfos::kernel::syscall {
     syscallMap           = new lib::HashMap<uint64_t, SyscallFunc>();
     (*syscallMap)[FORK]  = fork;
     (*syscallMap)[EXIT]  = exit;
+    (*syscallMap)[WAIT]  = wait;
     (*syscallMap)[READ]  = read;
     (*syscallMap)[EXEC]  = exec;
     (*syscallMap)[OPEN]  = open;

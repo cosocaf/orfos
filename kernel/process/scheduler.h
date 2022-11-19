@@ -17,12 +17,10 @@ namespace orfos::kernel::process {
     mutex::SpinMutex mutex;
     lib::Queue<Process*> readyQueue;
     lib::HashMap<void*, std::vector<Process*>> sleepTable;
-    lib::HashSet<Process*> allProc;
 
     void killZombie(Process* process);
 
   public:
-    const lib::HashSet<Process*>& allProcesses() const;
     void registerProcess(Process* process);
     void unregisterProcess(Process* process);
     void reschedule();

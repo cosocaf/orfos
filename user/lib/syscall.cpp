@@ -11,6 +11,7 @@
 extern "C" {
 uint64_t sys_fork();
 [[noreturn]] uint64_t sys_exit(int);
+uint64_t sys_wait(uint64_t);
 uint64_t sys_read(int, char*, int);
 uint64_t sys_exec(const char*, const char**);
 uint64_t sys_open(const char*, int);
@@ -25,6 +26,9 @@ uint64_t fork() {
 }
 [[noreturn]] void exit(int status) {
   sys_exit(status);
+}
+void wait(uint64_t address) {
+  sys_wait(address);
 }
 int read(int fd, char* buf, int len) {
   return sys_read(fd, buf, len);

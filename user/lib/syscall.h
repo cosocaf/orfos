@@ -7,6 +7,7 @@
 
 uint64_t fork();
 [[noreturn]] void exit(int status);
+void wait(uint64_t address);
 int read(int fd, char* buf, int len);
 void exec(const char* path, const char** argv);
 int open(const char* path, int mode);

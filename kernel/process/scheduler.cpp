@@ -18,11 +18,6 @@ namespace orfos::kernel::process {
   void Scheduler::killZombie(Process* process) {
     assert(process->state == ProcessState::Zombie);
     delete process;
-    allProc.erase(process);
-  }
-
-  const lib::HashSet<Process*>& Scheduler::allProcesses() const {
-    return allProc;
   }
 
   void Scheduler::registerProcess(Process* process) {
@@ -32,15 +27,12 @@ namespace orfos::kernel::process {
     switch (process->state) {
       case ProcessState::Used:
       case ProcessState::Running:
-        allProc.insert(process);
         break;
       case ProcessState::Ready:
         readyQueue.push(process);
-        allProc.insert(process);
         break;
       case ProcessState::Sleeping:
         sleepTable[process->chan].push_back(process);
-        allProc.insert(process);
         break;
       case ProcessState::Zombie:
         // Do nothing.

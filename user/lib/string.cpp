@@ -1,5 +1,6 @@
 #include "string.h"
 
+#include "stdio.h"
 extern "C" {
 void *memcpy(void *dest, const void *src, size_t n) {
   auto d = static_cast<char *>(dest);
@@ -45,13 +46,16 @@ int strncmp(const char *s1, const char *s2, size_t n) {
   }
   return (unsigned char)*s1 - (unsigned char)*s2;
 }
-char *strncpy(char *s, const char *t, size_t n) {
+char *strncpy(char *s, const char *t, int n) {
   char *os;
 
   os = s;
   while (n-- > 0 && (*s++ = *t++) != 0) {
   }
-  while (n-- > 0) *s++ = 0;
+  while (n-- > 0) {
+    *s++ = 0;
+  }
+
   return os;
 }
 size_t strlen(const char *s) {

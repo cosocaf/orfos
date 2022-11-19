@@ -45,7 +45,7 @@ int strncmp(const char *s1, const char *s2, size_t n) {
   }
   return (unsigned char)*s1 - (unsigned char)*s2;
 }
-char *strncpy(char *s, const char *t, size_t n) {
+char *strncpy(char *s, const char *t, int n) {
   char *os;
 
   os = s;

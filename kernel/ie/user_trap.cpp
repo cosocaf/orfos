@@ -25,12 +25,17 @@ namespace orfos::kernel::ie {
 
       auto scause = arch::read_scause();
       // syscall
-      if (scause == 8) {
+      if (scause == 0x08) {
         proc->trapFrame->epc += 4;
         arch::write_sstatus(arch::read_sstatus() | SSTATUS_SIE);
         syscall::syscall();
+      } else if (scause == 0x0F) {
+        proc->trapFrame->epc += 4;
+        arch::write_sstatus(arch::read_sstatus() | SSTATUS_SIE);
+        auto stval = arch::read_stval();
+        proc->growMemory(stval);
       } else if (auto cause = which(scause); cause == Cause::Unexpected) {
-        console::printf("Unexpected interrupt/exception\n");
+        console::printf("User trap: Unexpected interrupt/exception\n");
         console::printf("scause %p, sepc %p, stval %p, pid %d\n",
                         scause,
                         arch::read_sepc(),

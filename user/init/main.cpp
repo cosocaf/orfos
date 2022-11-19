@@ -2,7 +2,7 @@
 #include <lib/stdio.h>
 #include <lib/syscall.h>
 
-int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv) {
+int main([[maybe_unused]] int argc, [[maybe_unused]] char *argv[]) {
   auto stdioPath = "console";
   auto stdio     = open(stdioPath, O_RDWR);
   if (stdio < 0) {

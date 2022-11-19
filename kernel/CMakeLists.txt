@@ -45,6 +45,7 @@ add_executable(
   syscall/args.cpp
   syscall/fork.cpp
   syscall/exit.cpp
+  syscall/wait.cpp
   syscall/read.cpp
   syscall/exec.cpp
   syscall/open.cpp

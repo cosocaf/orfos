@@ -18,6 +18,7 @@
 
 #include "cpu.h"
 #include "scheduler.h"
+#include "sleep.h"
 #include "user_init_proc.h"
 
 namespace orfos::kernel::process {
@@ -185,6 +186,7 @@ namespace orfos::kernel::process {
     {
       mutex::LockGuard guard(waitMutex);
       newProc->parent = this;
+      children.push_back(newProc);
     }
 
     {
@@ -225,12 +227,46 @@ namespace orfos::kernel::process {
     assert(false);
   }
 
-  void Process::reparent() {
-    for (auto& proc : process::scheduler->allProcesses()) {
-      if (proc->parent == this) {
-        proc->parent = initProc;
-        scheduler->wakeup(initProc);
+  void Process::growMemory(size_t size) {
+    if (size > memorySize) {
+      memory::allocateUserVirtualMemory(
+        pageTable, memorySize, size, memory::PTE_W);
+    } else if (size < memorySize) {
+      memory::deallocateUserVirtualMemory(pageTable, size, memorySize);
+    }
+    memorySize = size;
+  }
+
+  bool Process::wait(uint64_t address) {
+    mutex::LockGuard guard(waitMutex);
+    while (true) {
+      if (children.empty()) {
+        return -1;
       }
+      for (size_t i = 0; i < children.size(); ++i) {
+        auto& child = children[i];
+        mutex::LockGuard guard(child->mutex);
+        if (child->state == ProcessState::Zombie) {
+          if (address != 0
+              && !pageTable->copyout(
+                address,
+                reinterpret_cast<char*>(&child->exitStatus),
+                sizeof(child->exitStatus))) {
+            return -1;
+          }
+          children.erase(children.begin() + i);
+          return child->pid;
+        }
+      }
+      sleep(this, waitMutex);
+    }
+  }
+
+  void Process::reparent() {
+    for (auto& child : children) {
+      mutex::LockGuard guard(child->mutex);
+      child->parent = initProc;
+      scheduler->wakeup(initProc);
     }
   }
 } // namespace orfos::kernel::process

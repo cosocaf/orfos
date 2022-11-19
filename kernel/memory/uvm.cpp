@@ -16,7 +16,7 @@ namespace orfos::kernel::memory {
       return oldSize;
     }
 
-    oldSize = VirtualAddress(oldSize).roundDown().address;
+    oldSize = VirtualAddress(oldSize).roundUp().address;
     for (uint64_t addr = oldSize; addr < newSize; addr += PAGE_SIZE) {
       auto mem = Page::allocate();
       if (mem == nullptr) {

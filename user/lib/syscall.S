@@ -12,6 +12,12 @@ sys_read:
   ecall
   ret
 
+.global sys_wait
+sys_wait:
+  li a7, SYS_WAIT
+  ecall
+  ret
+
 .global sys_exit
 sys_exit:
   li a7, SYS_EXIT

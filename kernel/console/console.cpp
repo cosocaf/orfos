@@ -1,7 +1,9 @@
 #include "console.h"
 
+#include <memory/copy.h>
 #include <mutex/lock_guard.h>
 #include <mutex/spin_mutex.h>
+#include <process/sleep.h>
 
 #include <cstdarg>
 #include <cstddef>
@@ -42,7 +44,14 @@ namespace orfos::kernel::console {
       }
     }
 
-    mutex::SpinMutex mutex;
+    constexpr uint64_t BUF_SIZE = 1024;
+    struct {
+      mutex::SpinMutex mutex;
+      char buf[BUF_SIZE];
+      uint64_t readPos;
+      uint64_t writePos;
+      uint64_t editPos;
+    } cons;
   } // namespace
   void initialize() {
     initializeUart();
@@ -50,11 +59,33 @@ namespace orfos::kernel::console {
   void putc(char c) {
     uartPutcSync(c);
   }
-  char getc() {
-    return uartGetc();
+  char readline(bool user, char* buf, size_t len) {
+    mutex::LockGuard guard(cons.mutex);
+    auto max = len;
+    while (len > 0) {
+      while (cons.readPos == cons.writePos) {
+        process::sleep(&cons.readPos, cons.mutex);
+      }
+      auto c = cons.buf[cons.readPos++ % BUF_SIZE];
+      if (c == '\x04') {
+        if (len < max) {
+          --cons.readPos;
+        }
+      }
+      if (!memory::eitherCopyout(
+            user, reinterpret_cast<uint64_t>(buf), &c, 1)) {
+        break;
+      }
+      ++buf;
+      --len;
+      if (c == '\n') {
+        break;
+      }
+    }
+    return max - len;
   }
   void printf(const char* fmt, ...) {
-    mutex::LockGuard guard(mutex);
+    mutex::LockGuard guard(cons.mutex);
 
     va_list ap;
     va_start(ap, fmt);
@@ -107,24 +138,33 @@ namespace orfos::kernel::console {
     va_end(ap);
   }
   void consoleInterrupt(char c) {
-    mutex::LockGuard guard(mutex);
+    mutex::LockGuard guard(cons.mutex);
     switch (c) {
       case '\b':
       case '\x7f':
-        putc('\b');
-        putc(' ');
-        putc('\b');
+        if (cons.editPos != cons.writePos) {
+          --cons.editPos;
+          putc('\b');
+          putc(' ');
+          putc('\b');
+        }
         break;
       case '\0':
         break;
       default:
-        if (c == '\r') {
-          c = '\n';
-        }
-        putc(c);
+        if (cons.editPos - cons.readPos < BUF_SIZE) {
+          if (c == '\r') {
+            c = '\n';
+          }
+          putc(c);
 
-        if (c == '\n' || c == '\x04') {
-          // wakeup(&cons.r);
+          cons.buf[cons.editPos++ % BUF_SIZE] = c;
+
+          if (c == '\n' || c == '\x04'
+              || cons.editPos - cons.readPos == BUF_SIZE) {
+            cons.writePos = cons.editPos;
+            process::wakeup(&cons.readPos);
+          }
         }
     }
   }

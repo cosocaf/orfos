@@ -46,6 +46,7 @@ set(
   ${CMAKE_CURRENT_SOURCE_DIR}/../README.md
   $<TARGET_FILE:init>
   $<TARGET_FILE:sh>
+  $<TARGET_FILE:echo>
 )
 
 add_custom_target(

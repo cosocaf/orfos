@@ -50,12 +50,12 @@ namespace orfos::kernel::syscall {
       }
     }
 
-    console::printf("[EXEC] %s { ", path);
-    for (auto& arg : argv) {
-      if (!arg) break;
-      console::printf("\"%s\" ", arg);
-    }
-    console::printf("}\n");
+    // console::printf("[EXEC] %s { ", path);
+    // for (auto& arg : argv) {
+    //   if (!arg) break;
+    //   console::printf("\"%s\" ", arg);
+    // }
+    // console::printf("}\n");
 
     auto result = elf::exec(path, argv);
     free();

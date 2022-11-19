@@ -9,19 +9,7 @@ namespace orfos::kernel::fs {
   namespace {
     Device deviceMap[NUM_DEVICES];
     int consoleRead(bool user, uint64_t dst, int n) {
-      int max = n;
-      while (n > 0) {
-        auto c = console::getc();
-        if (!memory::eitherCopyout(user, dst, &c, 1)) {
-          break;
-        }
-        ++dst;
-        --n;
-        if (c == '\n') {
-          break;
-        }
-      }
-      return max - n;
+      return console::readline(user, reinterpret_cast<char*>(dst), n);
     }
     int consoleWrite(bool user, uint64_t src, int n) {
       char buf[1024];

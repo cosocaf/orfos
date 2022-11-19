@@ -9,8 +9,9 @@
 
 namespace orfos::kernel::syscall {
   constexpr uint64_t FORK  = SYS_FORK;
-  constexpr uint64_t READ  = SYS_READ;
   constexpr uint64_t EXIT  = SYS_EXIT;
+  constexpr uint64_t WAIT  = SYS_WAIT;
+  constexpr uint64_t READ  = SYS_READ;
   constexpr uint64_t EXEC  = SYS_EXEC;
   constexpr uint64_t OPEN  = SYS_OPEN;
   constexpr uint64_t WRITE = SYS_WRITE;

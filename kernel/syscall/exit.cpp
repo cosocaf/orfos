@@ -10,8 +10,8 @@ namespace orfos::kernel::syscall {
     int status;
     getArgInt(0, &status);
     auto proc = process::Cpu::current().process;
-    console::printf(
-      "[EXIT] %s status=0x%x pid=%d\n", proc->name, status, proc->pid);
+    // console::printf(
+    //   "[EXIT] %s status=0x%x pid=%d\n", proc->name, status, proc->pid);
     proc->exit(status);
     return 0;
   }

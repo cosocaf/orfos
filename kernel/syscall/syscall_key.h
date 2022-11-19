@@ -3,6 +3,7 @@
 
 #define SYS_FORK 1
 #define SYS_EXIT 2
+#define SYS_WAIT 3
 #define SYS_READ 5
 #define SYS_EXEC 7
 #define SYS_OPEN 15
