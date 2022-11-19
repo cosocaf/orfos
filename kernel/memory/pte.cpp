@@ -10,4 +10,7 @@ namespace orfos::kernel::memory {
     pte.raw = (address >> 12) << 10;
     return pte;
   }
+  uint16_t PageTableEntry::flags() const {
+    return static_cast<uint16_t>(raw & 0x3FF);
+  }
 } // namespace orfos::kernel::memory

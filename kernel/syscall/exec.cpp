@@ -1,6 +1,7 @@
 #include "exec.h"
 
 #include <arch/config.h>
+#include <console/console.h>
 #include <elf/exec.h>
 #include <fs/file.h>
 #include <lib/string.h>
@@ -12,12 +13,11 @@ namespace orfos::kernel::syscall {
     char path[fs::MAX_PATH_LENGTH];
     char* argv[elf::MAX_ARGS];
 
+    uint64_t uargv, uarg;
+    getArgAddress(1, &uargv);
     if (getArgString(0, path, sizeof(path)) < 0) {
       return -1;
     }
-
-    uint64_t uargv, uarg;
-    getArgAddress(1, &uargv);
 
     memset(argv, 0, sizeof(argv));
 
@@ -49,6 +49,13 @@ namespace orfos::kernel::syscall {
         return -1;
       }
     }
+
+    console::printf("[EXEC] %s { ", path);
+    for (auto& arg : argv) {
+      if (!arg) break;
+      console::printf("\"%s\" ", arg);
+    }
+    console::printf("}\n");
 
     auto result = elf::exec(path, argv);
     free();

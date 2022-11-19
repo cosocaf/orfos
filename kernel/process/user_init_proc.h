@@ -3,7 +3,10 @@
 
 #pragma once
 
+#include "process.h"
+
 namespace orfos::kernel::process {
+  extern Process* initProc;
   void startUserInitProcess();
 }
 

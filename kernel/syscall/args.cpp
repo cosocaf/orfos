@@ -57,4 +57,28 @@ namespace orfos::kernel::syscall {
     getArgAddress(n, &address);
     return fetchString(address, buf, length);
   }
+  bool getArgFd(int n, int* pfd, fs::File** pfile) {
+    auto proc = process::Cpu::current().process;
+
+    int fd;
+    getArgInt(n, &fd);
+    if (fd < 0) {
+      return false;
+    }
+    if (static_cast<size_t>(fd) >= proc->openFiles.size()) {
+      return false;
+    }
+    if (proc->openFiles[fd] == nullptr) {
+      return false;
+    }
+
+    if (pfd) {
+      *pfd = fd;
+    }
+    if (pfile) {
+      *pfile = proc->openFiles[fd];
+    }
+
+    return true;
+  }
 } // namespace orfos::kernel::syscall

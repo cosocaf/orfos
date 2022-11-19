@@ -5,6 +5,7 @@
 #include <lib/string.h>
 #include <memory/page_table.h>
 #include <memory/uvm.h>
+#include <process/cpu.h>
 #include <process/process.h>
 #include <process/scheduler.h>
 
@@ -53,11 +54,12 @@ namespace orfos::kernel::elf {
 
     ElfHeader elfHeader;
     ProgramHeader progHeader;
-    auto proc     = new process::Process();
-    uint64_t size = 0;
+    auto proc                    = process::Cpu::current().process;
+    memory::PageTable* pageTable = proc->makePageTable();
+    uint64_t size                = 0;
 
     const auto bad = [&]() {
-      delete proc;
+      delete pageTable;
       if (ip) {
         ip->unlock();
         ip->put();
@@ -97,7 +99,7 @@ namespace orfos::kernel::elf {
       }
 
       size
-        = memory::allocateUserVirtualMemory(proc->pageTable,
+        = memory::allocateUserVirtualMemory(pageTable,
                                             size,
                                             progHeader.vaddr + progHeader.memsz,
                                             flagsToPerm(progHeader.flags));
@@ -105,11 +107,8 @@ namespace orfos::kernel::elf {
         return bad();
       }
 
-      auto res = loadSegment(proc->pageTable,
-                             progHeader.vaddr,
-                             ip,
-                             progHeader.off,
-                             progHeader.filesz);
+      auto res = loadSegment(
+        pageTable, progHeader.vaddr, ip, progHeader.off, progHeader.filesz);
       if (!res) {
         return bad();
       }
@@ -119,15 +118,15 @@ namespace orfos::kernel::elf {
     fs::endOp();
     ip = nullptr;
 
-    size               = memory::VirtualAddress(size).address;
+    size               = memory::VirtualAddress(size).roundUp().address;
     uint64_t allocSize = memory::allocateUserVirtualMemory(
-      proc->pageTable, size, size + PAGE_SIZE * 2, memory::PTE_W);
+      pageTable, size, size + PAGE_SIZE * 2, memory::PTE_W);
     if (allocSize == 0) {
       return bad();
     }
 
     size = allocSize;
-    memory::clearUserVirtualMemory(proc->pageTable, size - PAGE_SIZE * 2);
+    memory::clearUserVirtualMemory(pageTable, size - PAGE_SIZE * 2);
 
     auto sp        = size;
     auto stackBase = sp - PAGE_SIZE;
@@ -143,7 +142,7 @@ namespace orfos::kernel::elf {
       if (sp < stackBase) {
         return bad();
       }
-      if (!proc->pageTable->copyout(sp, argv[argc], strlen(argv[argc]) + 1)) {
+      if (!pageTable->copyout(sp, argv[argc], strlen(argv[argc]) + 1)) {
         return bad();
       }
       ustack[argc] = sp;
@@ -155,7 +154,7 @@ namespace orfos::kernel::elf {
     if (sp < stackBase) {
       return bad();
     }
-    if (!proc->pageTable->copyout(
+    if (!pageTable->copyout(
           sp, reinterpret_cast<char*>(ustack), (argc + 1) * sizeof(uint64_t))) {
       return bad();
     }
@@ -171,12 +170,13 @@ namespace orfos::kernel::elf {
     }
     strncpy(proc->name, last, sizeof(proc->name));
 
+    auto oldPageTable    = proc->pageTable;
+    proc->pageTable      = pageTable;
     proc->memorySize     = size;
     proc->trapFrame->epc = elfHeader.entry;
     proc->trapFrame->sp  = sp;
 
-    proc->state = process::ProcessState::Ready;
-    process::scheduler->registerProcess(proc);
+    delete oldPageTable;
 
     return argc;
   }

@@ -3,11 +3,13 @@
 
 #pragma once
 
+#include <fs/file.h>
 #include <fs/inode.h>
 #include <memory/page_table.h>
 #include <mutex/spin_mutex.h>
 
 #include <cstdint>
+#include <vector>
 
 #include "context.h"
 #include "trap_frame.h"
@@ -18,6 +20,7 @@ namespace orfos::kernel::process {
     Sleeping,
     Ready,
     Running,
+    Zombie,
   };
   struct Process {
     uint64_t pid;
@@ -32,12 +35,22 @@ namespace orfos::kernel::process {
     uint64_t memorySize;
     void* chan;
     fs::Inode* cwd;
+    std::vector<fs::File*> openFiles;
     char name[16];
     bool killed;
     int exitStatus;
 
     Process();
     ~Process();
+
+    memory::PageTable* makePageTable();
+
+    int open(const char* path, int mode);
+    Process* fork();
+    void exit(int status);
+
+  private:
+    void reparent();
   };
 
   void initialize();

@@ -3,6 +3,7 @@
 #include <arch/riscv.h>
 #include <console/console.h>
 #include <fs/buffer.h>
+#include <fs/device.h>
 #include <fs/inode.h>
 #include <fs/virtio.h>
 #include <ie/ie.h>
@@ -39,6 +40,7 @@ namespace orfos::kernel::boot {
       fs::initializeBufferCache();
       fs::initializeInode();
       fs::initializeVirtio();
+      fs::initializeDevices();
 
       syscall::initialize();
 

@@ -14,9 +14,10 @@
 namespace orfos::kernel::fs {
   constexpr uint64_t NUM_DIRECT_BLOCKS   = 12;
   constexpr uint64_t NUM_INDIRECT_BLOCKS = BLOCK_SIZE / sizeof(uint32_t);
-  constexpr uint64_t ROOT_DEVICE         = 1;
-  constexpr uint64_t ROOT_INUM           = 1;
-  constexpr uint64_t NUM_INODES          = 200;
+  constexpr uint64_t MAX_FILE    = NUM_DIRECT_BLOCKS + NUM_INDIRECT_BLOCKS;
+  constexpr uint64_t ROOT_DEVICE = 1;
+  constexpr uint64_t ROOT_INUM   = 1;
+  constexpr uint64_t NUM_INODES  = 200;
 
   struct Inode {
     uint32_t device;
@@ -33,9 +34,8 @@ namespace orfos::kernel::fs {
     uint32_t indirectBlock;
 
   private:
+    static Inode* allocate(uint32_t device, int16_t type);
     static Inode* get(uint32_t device, uint32_t inum);
-    static Inode* dup(Inode* ip);
-    void truncate();
     void update();
 
     uint32_t bmap(uint32_t bn);
@@ -45,13 +45,22 @@ namespace orfos::kernel::fs {
   public:
     static Inode* open(const char* path);
     static Inode* open(const char* path, char* name);
+    static Inode* create(const char* path,
+                         int16_t type,
+                         int16_t major,
+                         int16_t minor);
+
+    Inode* dup();
+    void truncate();
 
     void lock();
     void unlock();
     void put();
 
-    Inode* dirLookup(char* name, uint32_t* poffset);
+    Inode* dirLookup(const char* name, uint32_t* poffset);
+    bool dirLink(const char* name, uint32_t inum);
     int read(bool userDst, uint64_t dst, uint32_t offset, uint32_t length);
+    int write(bool userSrc, uint64_t src, uint32_t offset, uint32_t length);
   };
 
   struct DiskInode {

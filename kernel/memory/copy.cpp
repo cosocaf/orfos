@@ -19,7 +19,7 @@ namespace orfos::kernel::memory {
         static_cast<char*>(dst), src, len);
     } else {
       memmove(dst, reinterpret_cast<void*>(src), len);
-      return 0;
+      return true;
     }
   }
 } // namespace orfos::kernel::memory

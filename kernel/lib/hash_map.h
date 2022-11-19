@@ -17,6 +17,56 @@ namespace orfos::kernel::lib {
       Node* next;
     };
 
+    template <typename Thiz, typename T>
+    class Iterator {
+      Thiz thiz;
+      size_t vecIndex;
+      Node* elem;
+
+    public:
+      Iterator(Thiz thiz, size_t vecIndex, Node* elem)
+        : thiz(thiz), vecIndex(vecIndex), elem(elem) {}
+      const T& operator*() const {
+        return elem->kv;
+      }
+      T& operator*() {
+        return elem->kv;
+      }
+      T* operator->() {
+        return &elem->kv;
+      }
+      Iterator& operator++() {
+        if (elem->next) {
+          elem = elem->next;
+        } else if (vecIndex < thiz->nodes.size() - 1) {
+          ++vecIndex;
+          elem = thiz->nodes[vecIndex];
+        }
+        return *this;
+      }
+      Iterator operator++(int) {
+        auto prev = *this;
+        ++(*this);
+        return prev;
+      }
+
+      bool operator==(const Iterator& other) const {
+        if (thiz != other.thiz) {
+          return false;
+        }
+        if (vecIndex != other.vecIndex) {
+          return false;
+        }
+        if (elem != other.elem) {
+          return false;
+        }
+        return true;
+      }
+      bool operator!=(const Iterator& other) const {
+        return !(*this == other);
+      }
+    };
+
     std::hash<Key> makeHash;
     // 2^capacity
     size_t capacity;
@@ -87,6 +137,43 @@ namespace orfos::kernel::lib {
         node = node->next;
       }
       return node != nullptr;
+    }
+    bool empty() const {
+      for (auto& node : nodes) {
+        if (node) return false;
+      }
+      return true;
+    }
+
+    auto begin() {
+      if (nodes.empty()) {
+        return end();
+      }
+      return Iterator<decltype(this), decltype(nodes[0]->kv)>(
+        this, 0, nodes.front());
+    }
+    auto end() {
+      return Iterator<decltype(this), decltype(nodes[0]->kv)>(
+        this, nodes.size(), nullptr);
+    }
+
+    auto begin() const {
+      return cbegin();
+    }
+    auto end() const {
+      return cend();
+    }
+
+    auto cbegin() const {
+      if (nodes.empty()) {
+        return end();
+      }
+      return Iterator<decltype(this), decltype(nodes[0]->kv)>(
+        this, 0, nodes.front());
+    }
+    auto cend() const {
+      return Iterator<decltype(this), decltype(nodes[0]->kv)>(
+        this, nodes.size(), nullptr);
     }
   };
 } // namespace orfos::kernel::lib

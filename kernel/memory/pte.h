@@ -32,6 +32,7 @@ namespace orfos::kernel::memory {
     PageTableEntry();
     uint64_t toPhysicalAddress() const;
     static PageTableEntry fromPhysicalAddress(uint64_t address);
+    uint16_t flags() const;
   };
   static_assert(sizeof(PageTableEntry) == sizeof(uint64_t));
 } // namespace orfos::kernel::memory

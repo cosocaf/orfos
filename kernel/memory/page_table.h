@@ -21,7 +21,7 @@ namespace orfos::kernel::memory {
     bool map(VirtualAddress virtualAddress,
              uint64_t size,
              uint64_t physicalAddress,
-             uint8_t flags);
+             uint16_t flags);
     void unmap(VirtualAddress virtualAddress, uint64_t numPages, bool doFree);
     PageTableEntry* walk(VirtualAddress virtualAddress, bool allocate);
     uint64_t walkAddress(VirtualAddress virtualAddress);

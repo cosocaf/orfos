@@ -15,7 +15,7 @@ namespace orfos::kernel::memory {
   bool PageTable::map(VirtualAddress virtualAddress,
                       uint64_t size,
                       uint64_t physicalAddress,
-                      uint8_t flags) {
+                      uint16_t flags) {
     assert(size != 0);
 
     auto last = VirtualAddress(virtualAddress.address + size - 1).roundDown();
@@ -25,10 +25,6 @@ namespace orfos::kernel::memory {
       auto pte = walk(virtualAddress, true);
       if (pte == nullptr) {
         return false;
-      }
-      if (pte->pte.v) {
-        int i = 0;
-        i += 10;
       }
       assert(!pte->pte.v);
       pte->raw |= flags;

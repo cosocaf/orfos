@@ -33,6 +33,8 @@ add_executable(
   ie/cause.cpp
   ie/plic.cpp
   fs/fs.cpp
+  fs/file.cpp
+  fs/device.cpp
   fs/buffer.cpp
   fs/block.cpp
   fs/super_block.cpp
@@ -41,7 +43,12 @@ add_executable(
   fs/virtio.cpp
   syscall/syscall.cpp
   syscall/args.cpp
+  syscall/fork.cpp
+  syscall/exit.cpp
   syscall/exec.cpp
+  syscall/open.cpp
+  syscall/write.cpp
+  syscall/mknod.cpp
   elf/exec.cpp
   lib/assert.cpp
   lib/stdexcept.cpp

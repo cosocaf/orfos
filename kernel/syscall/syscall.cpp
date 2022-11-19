@@ -5,6 +5,11 @@
 #include <process/cpu.h>
 
 #include "exec.h"
+#include "exit.h"
+#include "fork.h"
+#include "mknod.h"
+#include "open.h"
+#include "write.h"
 
 namespace orfos::kernel::syscall {
   namespace {
@@ -26,7 +31,12 @@ namespace orfos::kernel::syscall {
     }
   }
   void initialize() {
-    syscallMap          = new lib::HashMap<uint64_t, SyscallFunc>();
-    (*syscallMap)[EXEC] = exec;
+    syscallMap           = new lib::HashMap<uint64_t, SyscallFunc>();
+    (*syscallMap)[FORK]  = fork;
+    (*syscallMap)[EXIT]  = exit;
+    (*syscallMap)[EXEC]  = exec;
+    (*syscallMap)[OPEN]  = open;
+    (*syscallMap)[WRITE] = write;
+    (*syscallMap)[MKNOD] = mknod;
   }
 } // namespace orfos::kernel::syscall

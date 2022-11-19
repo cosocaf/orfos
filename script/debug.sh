@@ -1,8 +1,15 @@
 #!/bin/bash -e
 
 SCRIPT_DIR=$(cd $(dirname $0); pwd)
+OS=kernel.elf
+CPUS=1
+FS=$SCRIPT_DIR/../fs.img
 
 cd $SCRIPT_DIR/../
+
+if [ ! -e $FS ]; then
+  touch $FS
+fi
 
 if [ ! -e build ]; then
   cmake -G Ninja -B build
@@ -13,14 +20,6 @@ cmake --build build
 echo "Build succeeded."
 
 cd $SCRIPT_DIR/../build/kernel
-
-OS=kernel.elf
-CPUS=1
-FS=$SCRIPT_DIR/../fs.img
-
-if [ ! -e $FS ]; then
-  qemu-img create -f raw $FS raw
-fi
 
 echo "Start qemu..."
 

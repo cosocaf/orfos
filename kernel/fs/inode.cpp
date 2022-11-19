@@ -48,6 +48,24 @@ namespace orfos::kernel::fs {
 
     Itable* itable;
   } // namespace
+
+  Inode* Inode::allocate(uint32_t device, int16_t type) {
+    for (uint32_t i = 0; i < superBlock.numInodes; ++i) {
+      auto bp = bufferCache->get(device, iblock(i, superBlock));
+      bp->read();
+      auto dip = reinterpret_cast<DiskInode*>(bp->data) + i % INODES_PER_BLOCK;
+      if (dip->type == 0) {
+        memset(dip, 0, sizeof(*dip));
+        dip->type = type;
+        writeLog(bp);
+        bufferCache->release(bp);
+        return get(device, i);
+      }
+      bufferCache->release(bp);
+    }
+    return nullptr;
+  }
+
   Inode* Inode::get(uint32_t device, uint32_t inum) {
     mutex::LockGuard guard(itable->mutex);
 
@@ -64,10 +82,10 @@ namespace orfos::kernel::fs {
 
     return &itable->inodes[key];
   }
-  Inode* Inode::dup(Inode* ip) {
+  Inode* Inode::dup() {
     mutex::LockGuard guard(itable->mutex);
-    ++ip->refCount;
-    return ip;
+    ++refCount;
+    return this;
   }
 
   void Inode::lock() {
@@ -119,7 +137,7 @@ namespace orfos::kernel::fs {
     }
 
     --refCount;
-    itable->mutex.lock();
+    itable->mutex.unlock();
   }
 
   void Inode::truncate() {
@@ -197,7 +215,7 @@ namespace orfos::kernel::fs {
     if (*path == '/') {
       ip = get(ROOT_DEVICE, ROOT_INUM);
     } else {
-      ip = dup(process::Cpu::current().process->cwd);
+      ip = process::Cpu::current().process->cwd->dup();
     }
 
     while ((path = skipElement(path, name)) != 0) {
@@ -237,7 +255,74 @@ namespace orfos::kernel::fs {
     return open(path, true, name);
   }
 
-  Inode* Inode::dirLookup(char* name, uint32_t* poffset) {
+  Inode* Inode::create(const char* path,
+                       int16_t type,
+                       int16_t major,
+                       int16_t minor) {
+    char name[MAX_DIR_NAME_LENGTH];
+    auto dp = open(path, name);
+    if (dp == nullptr) {
+      return nullptr;
+    }
+
+    dp->lock();
+    auto ip = dp->dirLookup(name, nullptr);
+    if (ip != nullptr) {
+      dp->unlock();
+      dp->put();
+      if (type == T_FILE && (ip->type == T_FILE || ip->type == T_DEVICE)) {
+        return ip;
+      }
+      ip->unlock();
+      ip->put();
+      return nullptr;
+    }
+
+    ip = allocate(dp->device, type);
+    if (ip == nullptr) {
+      dp->unlock();
+      dp->put();
+      return nullptr;
+    }
+
+    ip->lock();
+    ip->major    = major;
+    ip->minor    = minor;
+    ip->numLinks = 1;
+    ip->update();
+
+    const auto fail = [&]() {
+      ip->numLinks = 0;
+      ip->update();
+      ip->unlock();
+      ip->put();
+      dp->unlock();
+      dp->put();
+      return nullptr;
+    };
+
+    if (type == T_DIR) {
+      if (!ip->dirLink(".", ip->inum) || !ip->dirLink("..", ip->inum)) {
+        return fail();
+      }
+    }
+
+    if (!dp->dirLink(name, ip->inum)) {
+      return fail();
+    }
+
+    if (type == T_DIR) {
+      ++dp->numLinks;
+      dp->update();
+    }
+
+    dp->unlock();
+    dp->put();
+
+    return ip;
+  }
+
+  Inode* Inode::dirLookup(const char* name, uint32_t* poffset) {
     assert(type == T_DIR);
 
     DirectoryEntry entry;
@@ -262,6 +347,32 @@ namespace orfos::kernel::fs {
     return nullptr;
   }
 
+  bool Inode::dirLink(const char* name, uint32_t inum) {
+    auto ip = dirLookup(name, nullptr);
+    if (ip != nullptr) {
+      ip->put();
+      return false;
+    }
+
+    DirectoryEntry entry;
+    uint32_t offset;
+    for (offset = 0; offset < size; offset += sizeof(entry)) {
+      auto len = read(
+        false, reinterpret_cast<uint64_t>(&entry), offset, sizeof(entry));
+      assert(len == sizeof(entry));
+      if (entry.inum == 0) {
+        break;
+      }
+    }
+
+    strncpy(entry.name, name, MAX_DIR_NAME_LENGTH);
+    entry.inum = inum;
+
+    auto len
+      = write(false, reinterpret_cast<uint64_t>(&entry), offset, sizeof(entry));
+    return len == sizeof(entry);
+  }
+
   int Inode::read(bool userDst,
                   uint64_t dst,
                   uint32_t offset,
@@ -282,7 +393,7 @@ namespace orfos::kernel::fs {
 
       auto bp = bufferCache->get(device, address);
       bp->read();
-      len = std::min<uint64_t>(-tot, BLOCK_SIZE - offset % BLOCK_SIZE);
+      len = std::min<uint64_t>(length - tot, BLOCK_SIZE - offset % BLOCK_SIZE);
       if (!memory::eitherCopyout(
             userDst, dst, bp->data + (offset % BLOCK_SIZE), len)) {
         bufferCache->release(bp);
@@ -292,6 +403,44 @@ namespace orfos::kernel::fs {
     }
 
     return static_cast<int>(tot);
+  }
+
+  int Inode::write(bool userSrc,
+                   uint64_t src,
+                   uint32_t offset,
+                   uint32_t length) {
+    if (offset > size || offset + length < offset) {
+      return -1;
+    }
+    if (offset + length > MAX_FILE * BLOCK_SIZE) {
+      return -1;
+    }
+
+    uint32_t tot, len;
+    for (tot = 0; tot < length; tot += len, offset += len, src += len) {
+      auto addr = bmap(offset / BLOCK_SIZE);
+      if (addr == 0) {
+        break;
+      }
+      auto bp = bufferCache->get(device, addr);
+      bp->read();
+      len = std::min<uint64_t>(length - tot, BLOCK_SIZE - offset % BLOCK_SIZE);
+      if (!memory::eitherCopyin(
+            bp->data + (offset % BLOCK_SIZE), userSrc, src, len)) {
+        bufferCache->release(bp);
+        break;
+      }
+      writeLog(bp);
+      bufferCache->release(bp);
+    }
+
+    if (offset > size) {
+      size = offset;
+    }
+
+    update();
+
+    return tot;
   }
 
   void initializeInode() {

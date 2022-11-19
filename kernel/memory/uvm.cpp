@@ -1,5 +1,7 @@
 #include "uvm.h"
 
+#include <lib/string.h>
+
 #include <cassert>
 
 #include "page.h"
@@ -53,5 +55,19 @@ namespace orfos::kernel::memory {
     auto pte = pageTable->walk(va, false);
     assert(pte != nullptr);
     pte->pte.u = 0;
+  }
+  void copyUserVirtualMemory(PageTable* oldTable,
+                             PageTable* newTable,
+                             uint64_t size) {
+    for (size_t i = 0; i < size; i += PAGE_SIZE) {
+      auto pte = oldTable->walk(i, false);
+      assert(pte != nullptr);
+      assert(pte->pte.v);
+      auto pa    = pte->toPhysicalAddress();
+      auto flags = pte->flags();
+      auto mem   = new char[PAGE_SIZE];
+      memmove(mem, reinterpret_cast<char*>(pa), PAGE_SIZE);
+      newTable->map(i, PAGE_SIZE, reinterpret_cast<uint64_t>(mem), flags);
+    }
   }
 } // namespace orfos::kernel::memory

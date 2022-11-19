@@ -14,6 +14,7 @@ namespace orfos::kernel::memory {
                                        uint64_t oldsz,
                                        uint64_t newsz);
   void clearUserVirtualMemory(PageTable* pageTable, uint64_t va);
+  void copyUserVirtualMemory(PageTable* oldTable, PageTable* newTable, uint64_t size);
 } // namespace orfos::kernel::memory
 
 #endif // ORFOS_KERNEL_MEMORY_UVM_H_

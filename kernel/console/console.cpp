@@ -10,7 +10,7 @@
 
 namespace orfos::kernel::console {
   namespace {
-    constexpr auto digits = "0123456789abcdef";
+    constexpr auto digits = "0123456789ABCDEF";
     void print_int(int n, int base, bool sign) {
       char buf[16];
       if (sign && n < 0) {
@@ -49,6 +49,9 @@ namespace orfos::kernel::console {
   }
   void putc(char c) {
     uartPutcSync(c);
+  }
+  char getc() {
+    return uartGetc();
   }
   void printf(const char* fmt, ...) {
     mutex::LockGuard guard(mutex);

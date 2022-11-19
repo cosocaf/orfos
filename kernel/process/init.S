@@ -18,5 +18,5 @@ init:
 
 .p2align 2
 argv:
-  .long init
+  .long init - orfos_userEntry
   .long 0
