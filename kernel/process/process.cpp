@@ -154,6 +154,15 @@ namespace orfos::kernel::process {
     return fd;
   }
 
+  int Process::close(int fd) {
+    if (fd < 0 || static_cast<size_t>(fd) >= openFiles.size()) {
+      return -1;
+    }
+    openFiles[fd]->close();
+    openFiles[fd] = nullptr;
+    return 0;
+  }
+
   Process* Process::fork() {
     auto newProc = new Process();
     memory::copyUserVirtualMemory(pageTable, newProc->pageTable, memorySize);

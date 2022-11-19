@@ -138,6 +138,13 @@ namespace orfos::kernel::lib {
       }
       return node != nullptr;
     }
+    size_t size() const {
+      size_t sz = 0;
+      for (auto& node : nodes) {
+        if (node != nullptr) ++sz;
+      }
+      return sz;
+    }
     bool empty() const {
       for (auto& node : nodes) {
         if (node) return false;

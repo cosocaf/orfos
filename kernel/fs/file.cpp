@@ -35,6 +35,37 @@ namespace orfos::kernel::fs {
     return this;
   }
 
+  int File::read(uint64_t address, int n) {
+    if (!readable) {
+      return -1;
+    }
+
+    switch (type) {
+      case FileType::Pipe:
+        // TODO: impl
+        return 0;
+      case FileType::Device: {
+        auto dev = getDevice(device.major);
+        if (dev == nullptr) {
+          return -1;
+        }
+        return dev->read(true, address, n);
+      }
+      case FileType::Inode: {
+        inode.ip->lock();
+        auto len = inode.ip->read(true, address, inode.offset, n);
+        if (len > 0) {
+          inode.offset += len;
+        }
+        inode.ip->unlock();
+        return len;
+      }
+      default:
+        assert(false);
+    }
+    return -1;
+  }
+
   int File::write(uint64_t address, int n) {
     if (!writable) {
       return -1;

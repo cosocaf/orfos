@@ -4,11 +4,13 @@
 #include <lib/hash_map.h>
 #include <process/cpu.h>
 
+#include "close.h"
 #include "exec.h"
 #include "exit.h"
 #include "fork.h"
 #include "mknod.h"
 #include "open.h"
+#include "read.h"
 #include "write.h"
 
 namespace orfos::kernel::syscall {
@@ -34,9 +36,11 @@ namespace orfos::kernel::syscall {
     syscallMap           = new lib::HashMap<uint64_t, SyscallFunc>();
     (*syscallMap)[FORK]  = fork;
     (*syscallMap)[EXIT]  = exit;
+    (*syscallMap)[READ]  = read;
     (*syscallMap)[EXEC]  = exec;
     (*syscallMap)[OPEN]  = open;
     (*syscallMap)[WRITE] = write;
     (*syscallMap)[MKNOD] = mknod;
+    (*syscallMap)[CLOSE] = close;
   }
 } // namespace orfos::kernel::syscall

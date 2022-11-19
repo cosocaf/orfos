@@ -38,6 +38,7 @@ namespace orfos::kernel::fs {
 
     static File* allocate();
     File* dup();
+    int read(uint64_t address, int n);
     int write(uint64_t address, int n);
     void close();
   };

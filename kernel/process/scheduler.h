@@ -24,6 +24,7 @@ namespace orfos::kernel::process {
   public:
     const lib::HashSet<Process*>& allProcesses() const;
     void registerProcess(Process* process);
+    void unregisterProcess(Process* process);
     void reschedule();
     void wakeup(void* chan);
     [[noreturn]] void run();

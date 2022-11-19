@@ -46,6 +46,8 @@ namespace orfos::kernel::process {
     memory::PageTable* makePageTable();
 
     int open(const char* path, int mode);
+    int close(int fd);
+
     Process* fork();
     void exit(int status);
 

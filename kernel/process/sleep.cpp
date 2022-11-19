@@ -12,6 +12,7 @@ namespace orfos::kernel::process {
       return;
     }
     mutex::LockGuard guard(proc->mutex);
+    scheduler->unregisterProcess(proc);
     proc->state = ProcessState::Ready;
     scheduler->reschedule();
   }

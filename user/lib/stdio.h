@@ -5,6 +5,9 @@
 
 #include <cstdarg>
 
+char getc(int fd);
+char* getline(char* buf, int n);
+
 void putc(int fd, char c);
 void printf(const char* fmt, ...);
 void fprintf(int fd, const char* fmt, ...);

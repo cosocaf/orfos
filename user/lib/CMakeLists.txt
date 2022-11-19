@@ -6,6 +6,7 @@ add_library(
   syscall.S
   file.cpp
   stdio.cpp
+  string.cpp
 )
 
 target_include_directories(

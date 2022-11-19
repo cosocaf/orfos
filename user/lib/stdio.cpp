@@ -35,6 +35,29 @@ namespace {
       putc(fd, digits[x >> (sizeof(uint64_t) * 8 - 4)]);
   }
 } // namespace
+
+char getc(int fd) {
+  char c;
+  read(fd, &c, 1);
+  return c;
+}
+char* getline(char* buf, int n) {
+  int i;
+  for (i = 0; i < n - 1;) {
+    auto c = getc(0);
+    if (c < 1) {
+      break;
+    }
+    buf[i] = c;
+    ++i;
+    if (c == '\n' || c == '\r') {
+      break;
+    }
+  }
+  buf[i] = '\0';
+  return buf;
+}
+
 void putc(int fd, char c) {
   write(fd, &c, 1);
 }

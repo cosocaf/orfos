@@ -45,10 +45,12 @@ add_executable(
   syscall/args.cpp
   syscall/fork.cpp
   syscall/exit.cpp
+  syscall/read.cpp
   syscall/exec.cpp
   syscall/open.cpp
   syscall/write.cpp
   syscall/mknod.cpp
+  syscall/close.cpp
   elf/exec.cpp
   lib/assert.cpp
   lib/stdexcept.cpp

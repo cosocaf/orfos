@@ -60,6 +60,9 @@ namespace orfos::kernel::lib {
     bool empty() const {
       return container.empty();
     }
+    size_t size() const {
+      return container.size();
+    }
 
     Iterator<decltype(container.begin())> begin() {
       if (empty()) {

@@ -12,6 +12,7 @@
 namespace orfos::kernel::ie {
   namespace {
     uint64_t timerScrach[NUM_CPUS][5];
+    // sleepシステムコールで使用する
     uint64_t ticks;
     mutex::SpinMutex mutex;
 

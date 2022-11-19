@@ -47,6 +47,22 @@ namespace orfos::kernel::process {
         break;
     }
   }
+  void Scheduler::unregisterProcess(Process* process) {
+    assert(process != nullptr);
+
+    mutex::LockGuard guard(mutex);
+
+    decltype(readyQueue) que;
+    while (!readyQueue.empty()) {
+      auto proc = readyQueue.front();
+      readyQueue.pop();
+      if (proc != process) {
+        que.push(proc);
+      }
+    }
+    readyQueue = que;
+  }
+
   void Scheduler::reschedule() {
     auto& cpu = Cpu::current();
     auto proc = cpu.process;

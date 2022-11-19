@@ -6,6 +6,12 @@ sys_fork:
   ecall
   ret
 
+.global sys_read
+sys_read:
+  li a7, SYS_READ
+  ecall
+  ret
+
 .global sys_exit
 sys_exit:
   li a7, SYS_EXIT
@@ -33,5 +39,11 @@ sys_write:
 .global sys_mknod
 sys_mknod:
   li a7, SYS_MKNOD
+  ecall
+  ret
+
+.global sys_close
+sys_close:
+  li a7, SYS_CLOSE
   ecall
   ret
