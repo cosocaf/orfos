@@ -4,7 +4,8 @@
 #pragma once
 
 namespace orfos::kernel::boot {
-  [[noreturn]] void main();
-}
+  [[noreturn]] void primaryMain();
+  [[noreturn]] void secondaryMain();
+} // namespace orfos::kernel::boot
 
 #endif // ORFOS_KERNEL_BOOT_MAIN_H_

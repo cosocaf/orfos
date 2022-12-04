@@ -2,3 +2,4 @@ tmp/
 .vscode/
 build/
 fs.img
+*_old

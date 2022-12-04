@@ -1,64 +1,51 @@
-#include "main.h"
-
 #include <arch/riscv.h>
-#include <console/console.h>
-#include <fs/buffer.h>
-#include <fs/device.h>
-#include <fs/inode.h>
-#include <fs/virtio.h>
-#include <ie/ie.h>
-#include <ie/plic.h>
-#include <memory/kvm.h>
-#include <memory/page.h>
-#include <process/process.h>
-#include <process/scheduler.h>
-#include <process/user_init_proc.h>
-#include <syscall/syscall.h>
+#include <driver/device_tree.h>
+
+#include <string_view>
 
 namespace orfos::kernel::boot {
-  namespace {
-    // hartid=0の初期化が完了したかどうかのフラグ
-    volatile bool started = false;
-  } // namespace
-  [[noreturn]] void main() {
-    auto hartid = arch::read_tp();
-    if (hartid == 0) {
-      console::initialize();
-      console::printf("ORFOS is booting...\n");
-
-      memory::Page::initialize();
-      memory::initializeKvm();
-      memory::initializeKvmHart();
-
-      process::initialize();
-      process::initializeScheduler();
-
-      ie::initializeHart();
-      ie::initializePlic();
-      ie::initializePlicHart();
-
-      fs::initializeBufferCache();
-      fs::initializeInode();
-      fs::initializeVirtio();
-      fs::initializeDevices();
-
-      syscall::initialize();
-
-      process::startUserInitProcess();
-
-      __sync_synchronize();
-      started = true;
-    } else {
-      while (!started) {
-        // Wait
+  [[noreturn]] void primaryMain() {
+    auto loadResult = driver::DeviceTree::load(arch::stval);
+    if (!loadResult) {
+      while (true) {
+        arch::wfi();
       }
-      __sync_synchronize();
-      console::printf("Hart %d is starting...", hartid);
-      memory::initializeKvmHart();
-      ie::initializeHart();
-      ie::initializePlicHart();
     }
 
-    process::scheduler->run();
+    auto& deviceTree = loadResult.unwrap();
+    for (const auto& block : deviceTree.getStructureBlock()) {
+      if (std::holds_alternative<driver::DeviceTreeBeginNodeStructure>(block)) {
+        auto& beginNode = std::get<driver::DeviceTreeBeginNodeStructure>(block);
+        auto& n          = beginNode;
+        (void)n;
+      } else if (std::holds_alternative<driver::DeviceTreeEndNodeStructure>(
+                   block)) {
+        auto& endNode = std::get<driver::DeviceTreeEndNodeStructure>(block);
+        auto& n        = endNode;
+        (void)n;
+      } else if (std::holds_alternative<driver::DeviceTreePropStructure>(
+                   block)) {
+        auto& prop = std::get<driver::DeviceTreePropStructure>(block);
+        auto& n     = prop;
+        (void)n;
+      } else if (std::holds_alternative<driver::DeviceTreeNopStructure>(
+                   block)) {
+        auto& nop = std::get<driver::DeviceTreeNopStructure>(block);
+        auto& n    = nop;
+        (void)n;
+      } else if (std::holds_alternative<driver::DeviceTreeEndStructure>(
+                   block)) {
+        auto& end = std::get<driver::DeviceTreeEndStructure>(block);
+        auto& n    = end;
+        (void)n;
+      }
+    }
+
+    while (true) {
+    }
+  }
+  [[noreturn]] void secondaryMain() {
+    while (true) {
+    }
   }
 } // namespace orfos::kernel::boot
