@@ -7,6 +7,7 @@
 #include <cstddef>
 #include <iterator>
 
+#include "libc/string.h"
 #include "panic.h"
 
 namespace orfos::kernel::lib {
@@ -18,9 +19,9 @@ namespace orfos::kernel::lib {
    *
    * 定義されるメンバ関数はstd::stringに準拠します。
    *
-   * @tparam N 文字列の最大の長さ
+   * @tparam N 終端を含まない文字列の最大の長さ
    */
-  template <size_t N = 128>
+  template <size_t N = 127>
   class FixedString {
     char buf[N + 1];
     size_t len;
@@ -54,11 +55,11 @@ namespace orfos::kernel::lib {
         }
       }
     }
-    constexpr FixedString(const char* str, size_t size)
-      : len(std::min(size, N)) {
+    constexpr FixedString(const char* str, size_t size) : len(std::min(size, N)) {
       for (size_t i = 0; i < len; ++i) {
         buf[i] = str[i];
       }
+      buf[len] = '\0';
     }
 
     template <size_t M>
@@ -159,9 +160,7 @@ namespace orfos::kernel::lib {
       return append(str.data(), str.size());
     }
     template <size_t M>
-    constexpr FixedString& append(const FixedString<M>& str,
-                                  size_t pos,
-                                  size_t n = npos) {
+    constexpr FixedString& append(const FixedString<M>& str, size_t pos, size_t n = npos) {
       return append(str.data() + pos, std::min(n, str.size() - pos));
     }
     constexpr FixedString& append(const char* str, size_t n) {
@@ -256,6 +255,30 @@ namespace orfos::kernel::lib {
   }
   template <size_t N, size_t M>
   constexpr bool operator!=(const FixedString<N>& a, const FixedString<M>& b) {
+    return !(a == b);
+  }
+  template <size_t N>
+  constexpr bool operator==(const FixedString<N>& a, const char* b) {
+    if (a.size() != strlen(b)) {
+      return false;
+    }
+    for (size_t i = 0; i < a.size(); ++i) {
+      if (a[i] != b[i]) {
+        return false;
+      }
+    }
+    return true;
+  }
+  template <size_t N>
+  constexpr bool operator==(const char* a, const FixedString<N>& b) {
+    return b == a;
+  }
+  template <size_t N>
+  constexpr bool operator!=(const FixedString<N>& a, const char* b) {
+    return !(a == b);
+  }
+  template <size_t N>
+  constexpr bool operator!=(const char* a, const FixedString<N>& b) {
     return !(a == b);
   }
 } // namespace orfos::kernel::lib

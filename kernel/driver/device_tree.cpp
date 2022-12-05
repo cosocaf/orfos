@@ -2,150 +2,281 @@
 
 #include <lib/align.h>
 #include <lib/endian.h>
-#include <lib/format.h>
 #include <lib/libc/string.h>
 
+#include <charconv>
+
 namespace orfos::kernel::driver {
-  DeviceTree::DeviceTree(uint64_t fdt)
-    : fdtHeader(fdt),
-      addressOfMemoryReservationBlock(0),
-      addressOfStructureBlock(0),
-      addressOfStringsBlock(0) {
-    header = *reinterpret_cast<DeviceTreeHeader*>(fdt);
+  StringList::StringList(const char* strs, size_t length)
+    : begin(strs), strs(strs), length(length) {}
+  const char* StringList::next() {
+    if (static_cast<size_t>(strs - begin) >= length) {
+      return nullptr;
+    }
+    auto str = strs;
+    strs += strlen(strs) + 1;
+    return str;
   }
 
-  lib::Result<DeviceTree, lib::FixedString<>> DeviceTree::load(uint64_t fdt) {
-    DeviceTree deviceTree(fdt);
+  DeviceTreeProperty::DeviceTreeProperty(const char* name, uint32_t length, uintptr_t value)
+    : name(name), length(length), value(value) {}
 
-    for (size_t i = 0; i < sizeof(deviceTree.header) / sizeof(uint32_t); ++i) {
-      auto& member = reinterpret_cast<uint32_t*>(&deviceTree.header)[i];
-      member       = lib::fromBigEndian(reinterpret_cast<uint32_t*>(fdt)[i]);
+  const decltype(DeviceTreeProperty::name)& DeviceTreeProperty::getName() const {
+    return name;
+  }
+  uint32_t DeviceTreeProperty::getValueAsU32() const {
+    return lib::fromBigEndian(*reinterpret_cast<uint32_t*>(value));
+  }
+  uint64_t DeviceTreeProperty::getValueAsU64() const {
+    return lib::fromBigEndian(*reinterpret_cast<uint64_t*>(value));
+  }
+  const char* DeviceTreeProperty::getValueAsString() const {
+    return reinterpret_cast<const char*>(value);
+  }
+  phandle_t DeviceTreeProperty::getValueAsPhandle() const {
+    return getValueAsU32();
+  }
+  StringList DeviceTreeProperty::getValueAsStringList() const {
+    return StringList(getValueAsString(), length);
+  }
+  void* DeviceTreeProperty::getValueAsPointer() const {
+    return reinterpret_cast<void*>(value);
+  }
+
+  DeviceTreeNode::DeviceTreeNode(const DeviceTreeStructure* beginStruct,
+                                 std::span<char> stringsBlock)
+    : beginStruct(beginStruct), stringsBlock(stringsBlock) {
+    auto name = beginStruct->beginNode.unitName;
+    auto end  = name + strlen(name);
+    auto pos  = std::find(name, end, '@');
+    this->name.append(name, pos);
+    if (pos != end) {
+      ++pos;
+      uintptr_t addr;
+      if (auto [ptr, ec] = std::from_chars(pos, end, addr, 16); ec == std::errc{}) {
+        unitAddress = addr;
+      }
+    }
+  }
+
+  const decltype(DeviceTreeNode::name)& DeviceTreeNode::getName() const {
+    return name;
+  }
+  std::optional<uintptr_t> DeviceTreeNode::getUnitAddress() const {
+    return unitAddress;
+  }
+
+  std::optional<DeviceTreeNode> DeviceTreeNode::findNode(const char* name, bool full) const {
+    if (full) {
+      auto end = name + strlen(name);
+      auto pos = std::find(name, name + strlen(name), '@');
+      if (this->name.size() == static_cast<size_t>(pos - name)
+          && std::equal(this->name.begin(), this->name.end(), name)) {
+        ++pos;
+        uintptr_t addr;
+        if (auto [ptr, ec] = std::from_chars(pos, end, addr, 16);
+            ec == std::errc{} && unitAddress == addr) {
+          return *this;
+        }
+      }
+    } else if (this->name == name) {
+      return *this;
     }
 
-    if (deviceTree.header.magic != MAGIC) {
-      return lib::error(
-        lib::format<lib::FixedString<>>(
-          "Failed to load DTB. The magic number is an unexpected value: {}",
-          deviceTree.header.magic)
-          .unwrap());
+    for (auto&& child : *this) {
+      if (auto found = child.findNode(name, full)) {
+        return found;
+      }
     }
 
-    deviceTree.addressOfMemoryReservationBlock
-      = fdt + deviceTree.header.offsetOfMemoryReserveMap;
-    deviceTree.addressOfStructureBlock
-      = fdt + deviceTree.header.offsetOfDtStruct;
-    deviceTree.addressOfStringsBlock
-      = fdt + deviceTree.header.offsetOfDtStrings;
-
-    return lib::ok(deviceTree);
+    return std::nullopt;
   }
-
-  lib::Result<const char*, lib::FixedString<>> DeviceTree::getString(
-    uint32_t offset) const {
-    if (offset >= header.sizeOfDtStrings) {
-      return lib::error("Offset is out of strings block bounds.");
+  std::optional<DeviceTreeNode> DeviceTreeNode::findNode(phandle_t phandle) const {
+    if (auto phandleProp = findProperty("phandle")) {
+      if (phandleProp->getValueAsPhandle() == phandle) {
+        return *this;
+      }
     }
-    return lib::ok(
-      reinterpret_cast<const char*>(addressOfStringsBlock + offset));
+
+    for (auto&& child : *this) {
+      if (auto found = child.findNode(phandle)) {
+        return found;
+      }
+    }
+
+    return std::nullopt;
   }
 
-  DeviceTreeStructureBlock DeviceTree::getStructureBlock() {
-    return DeviceTreeStructureBlock(
-      this,
-      addressOfStructureBlock,
-      addressOfStructureBlock + header.sizeOfDtStruct);
+  std::optional<DeviceTreeProperty> DeviceTreeNode::findProperty(const char* name) const {
+    kernelAssert(lib::fromBigEndian(beginStruct->token) == DeviceTreeStructureToken::BeginNode);
+
+    auto cur  = next(beginStruct);
+    int depth = 0;
+    while (true) {
+      cur = next(cur);
+      switch (lib::fromBigEndian(cur->token)) {
+        case DeviceTreeStructureToken::BeginNode:
+          ++depth;
+          break;
+        case DeviceTreeStructureToken::EndNode:
+          --depth;
+          if (depth == 0) {
+            return std::nullopt;
+          }
+          break;
+        case DeviceTreeStructureToken::Prop:
+          if (depth == 0) {
+            auto offset = lib::fromBigEndian(cur->prop.offsetOfName);
+            if (strcmp(&stringsBlock[offset], name) == 0) {
+              return DeviceTreeProperty(&stringsBlock[offset],
+                                        lib::fromBigEndian(cur->prop.length),
+                                        reinterpret_cast<uintptr_t>(&cur->prop.value));
+            }
+          }
+          break;
+        case DeviceTreeStructureToken::Nop:
+          break;
+        case DeviceTreeStructureToken::End:
+          return std::nullopt;
+      }
+    }
   }
 
-  DeviceTreeStructureBlock::DeviceTreeStructureBlock(DeviceTree* dt,
-                                                     uint64_t begin,
-                                                     uint64_t end)
-    : dt(dt), blockBegin(begin), blockEnd(end) {}
+  DeviceTreeNode::Iterator DeviceTreeNode::begin() const {
+    kernelAssert(lib::fromBigEndian(beginStruct->token) == DeviceTreeStructureToken::BeginNode);
+    auto cur = next(beginStruct);
+    while (true) {
+      switch (lib::fromBigEndian(cur->token)) {
+        case DeviceTreeStructureToken::Prop:
+        case DeviceTreeStructureToken::Nop:
+          break;
+        default:
+          return Iterator(cur, stringsBlock);
+      }
+      cur = next(cur);
+    }
+  }
+  DeviceTreeNode::Iterator DeviceTreeNode::end() const {
+    kernelAssert(lib::fromBigEndian(beginStruct->token) == DeviceTreeStructureToken::BeginNode);
+    auto cur  = next(beginStruct);
+    int depth = 1;
+    while (true) {
+      switch (lib::fromBigEndian(cur->token)) {
+        case DeviceTreeStructureToken::BeginNode:
+          ++depth;
+          break;
+        case DeviceTreeStructureToken::EndNode:
+          --depth;
+          if (depth == 0) {
+            return Iterator(cur, stringsBlock);
+          }
+          break;
+        case DeviceTreeStructureToken::End:
+          return Iterator(cur, stringsBlock);
+        default:
+          break;
+      }
+      cur = next(cur);
+    }
+  }
 
-  DeviceTreeStructureBlock::Iterator::Iterator(
-    const DeviceTreeStructureBlock* thiz,
-    uint64_t cur,
-    uint64_t end)
-    : thiz(thiz), cur(cur), end(end) {}
-
-  DeviceTreeStructureVariant DeviceTreeStructureBlock::Iterator::operator*()
-    const {
-    auto src = reinterpret_cast<DeviceTreeStructure*>(cur);
-    DeviceTreeStructureVariant dst;
-    const auto token = lib::fromBigEndian(src->token);
-    switch (token) {
-      case 0x01:
-        dst = DeviceTreeBeginNodeStructure{
-          .unitName = reinterpret_cast<const char*>(&src->beginNode.unitName)
-        };
+  const DeviceTreeStructure* DeviceTreeNode::next(const DeviceTreeStructure* cur) {
+    auto addr = reinterpret_cast<uintptr_t>(cur);
+    switch (lib::fromBigEndian(cur->token)) {
+      case DeviceTreeStructureToken::BeginNode:
+        addr += sizeof(cur->beginNode.token);
+        addr += strlen(cur->beginNode.unitName);
+        addr += 1;
         break;
-      case 0x02:
-        dst = DeviceTreeEndNodeStructure{};
+      case DeviceTreeStructureToken::EndNode:
+        addr += sizeof(cur->endNode);
         break;
-      case 0x03: {
-        uint32_t offset = lib::fromBigEndian(src->prop.offsetOfName);
-
-        dst = DeviceTreePropStructure{
-          .length       = lib::fromBigEndian(src->prop.length),
-          .offsetOfName = offset,
-          .name         = thiz->dt->getString(offset).unwrap(),
-          .value        = reinterpret_cast<const char*>(&src->prop.value),
-        };
-      } break;
-      case 0x04:
-        dst = DeviceTreeNopStructure{};
+      case DeviceTreeStructureToken::Prop:
+        addr += sizeof(cur->prop.token);
+        addr += sizeof(cur->prop.length);
+        addr += sizeof(cur->prop.offsetOfName);
+        addr += lib::fromBigEndian(cur->prop.length);
         break;
-      case 0x09:
-        dst = DeviceTreeEndStructure{};
+      case DeviceTreeStructureToken::Nop:
+        addr += sizeof(cur->nop);
+        break;
+      case DeviceTreeStructureToken::End:
+        addr += sizeof(cur->end);
         break;
     }
-    return dst;
-  }
-  DeviceTreeStructureBlock::Iterator&
-  DeviceTreeStructureBlock::Iterator::operator++() {
-    auto src   = reinterpret_cast<DeviceTreeStructure*>(cur);
-    auto token = lib::fromBigEndian(src->token);
-    switch (token) {
-      case 0x01:
-        cur += sizeof(token);
-        cur += strlen(reinterpret_cast<const char*>(&src->beginNode.unitName));
-        cur += 1;
-        break;
-      case 0x02:
-        cur += sizeof(src->endNode);
-        break;
-      case 0x03:
-        cur += sizeof(src->prop.token);
-        cur += sizeof(src->prop.length);
-        cur += sizeof(src->prop.offsetOfName);
-        cur += lib::fromBigEndian(src->prop.length);
-        break;
-      case 0x04:
-        cur += sizeof(src->nop);
-        break;
-      case 0x09:
-        cur += sizeof(src->end);
-    }
-    cur = lib::align(cur, sizeof(uint32_t));
-    if (cur >= end) {
-      cur = end;
-    }
-    return *this;
-  }
-  bool DeviceTreeStructureBlock::Iterator::operator!=(
-    const DeviceTreeStructureBlock::Iterator& other) const {
-    return cur != other.cur;
+    addr = lib::align(addr, sizeof(uint32_t));
+    return reinterpret_cast<const DeviceTreeStructure*>(addr);
   }
 
-  DeviceTreeStructureBlock::Iterator DeviceTreeStructureBlock::begin() const {
-    return cbegin();
+  DeviceTreeNode::Iterator::Iterator(const DeviceTreeStructure* beginStruct,
+                                     std::span<char> stringsBlock)
+    : beginStruct(beginStruct), stringsBlock(stringsBlock) {}
+
+  DeviceTreeNode::Iterator& DeviceTreeNode::Iterator::operator++() {
+    kernelAssert(lib::fromBigEndian(beginStruct->token) == DeviceTreeStructureToken::BeginNode);
+
+    int depth = 0;
+    while (true) {
+      beginStruct = next(beginStruct);
+      switch (lib::fromBigEndian(beginStruct->token)) {
+        case DeviceTreeStructureToken::BeginNode:
+          ++depth;
+          break;
+        case DeviceTreeStructureToken::EndNode:
+        case DeviceTreeStructureToken::End:
+          if (depth == 0) {
+            beginStruct = next(beginStruct);
+            return *this;
+          }
+          --depth;
+          break;
+        default:
+          break;
+      }
+    }
   }
-  DeviceTreeStructureBlock::Iterator DeviceTreeStructureBlock::end() const {
-    return cend();
+  DeviceTreeNode DeviceTreeNode::Iterator::operator*() const {
+    kernelAssert(lib::fromBigEndian(beginStruct->token) == DeviceTreeStructureToken::BeginNode);
+    return DeviceTreeNode(beginStruct, stringsBlock);
   }
-  DeviceTreeStructureBlock::Iterator DeviceTreeStructureBlock::cbegin() const {
-    return Iterator(this, blockBegin, blockEnd);
+  bool DeviceTreeNode::Iterator::operator==(const Iterator& other) const {
+    return beginStruct == other.beginStruct;
   }
-  DeviceTreeStructureBlock::Iterator DeviceTreeStructureBlock::cend() const {
-    return Iterator(this, blockEnd, blockEnd);
+
+  DeviceTree::DeviceTree(std::span<DeviceTreeReserveEntry> memoryReservationBlock,
+                         std::span<DeviceTreeStructure> structureBlock,
+                         std::span<char> stringsBlock)
+    : memoryReservationBlock(memoryReservationBlock),
+      structureBlock(structureBlock),
+      stringsBlock(stringsBlock),
+      rootNode(structureBlock.data(), stringsBlock) {}
+
+  std::optional<DeviceTreeNode> DeviceTree::findNode(const char* path) const {
+    kernelAssert(*path == '/');
+
+    auto end = path + strlen(path);
+    ++path;
+    std::optional<DeviceTreeNode> node = rootNode;
+    while (path < end) {
+      auto pos = std::find(path, end, '/');
+      if (pos - path >= 32) {
+        return std::nullopt;
+      }
+      lib::FixedString<31> name(path, pos - path);
+      bool full = pos == end && std::find(path, end, '@') != end;
+      if (auto found = node->findNode(name.c_str(), full)) {
+        node = found;
+      } else {
+        return std::nullopt;
+      }
+      path = pos + 1;
+    }
+    return node;
+  }
+  std::optional<DeviceTreeNode> DeviceTree::findNode(const char* name, bool full) const {
+    return rootNode.findNode(name, full);
+  }
+  std::optional<DeviceTreeNode> DeviceTree::findNode(phandle_t phandle) const {
+    return rootNode.findNode(phandle);
   }
 } // namespace orfos::kernel::driver

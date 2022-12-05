@@ -4,165 +4,123 @@
 #pragma once
 
 #include <lib/fixed_string.h>
-#include <lib/result.h>
 
-#include <variant>
+#include <optional>
+#include <span>
 
 namespace orfos::kernel::driver {
-  class DeviceTree;
+  using phandle_t = uint32_t;
 
-  struct DeviceTreeHeader {
-    /**
-     * @brief FDTのマジックナンバー
-     *
-     * ビッグエンディアンで0xD00DFEED固定。
-     */
-    uint32_t magic;
-    /**
-     * @brief DTBの合計サイズ
-     *
-     * 構造体のすべてのセクションが含まれる。
-     */
-    uint32_t totalSize;
-    /**
-     * @brief ヘッダの先頭からの構造ブロックへのオフセット
-     *
-     */
-    uint32_t offsetOfDtStruct;
-    /**
-     * @brief ヘッダの先頭からの文字列ブロックへのオフセット
-     *
-     */
-    uint32_t offsetOfDtStrings;
-    /**
-     * @brief ヘッダの先頭からのメモリ予約ブロックへのオフセット
-     *
-     */
-    uint32_t offsetOfMemoryReserveMap;
-    /**
-     * @brief DTBのバージョン
-     *
-     */
-    uint32_t version;
-    /**
-     * @brief 下位互換性のあるバージョンのうち最も低いバージョン
-     *
-     */
-    uint32_t lastCompatibleVersion;
-    /**
-     * @brief システムのブートCPUの物理ID
-     *
-     */
-    uint32_t bootCpuidPhysical;
-    /**
-     * @brief DTBの文字列ブロックセクションの長さ
-     *
-     */
-    uint32_t sizeOfDtStrings;
-    /**
-     * @brief DTBの構造ブロックセクションの長さ
-     *
-     */
-    uint32_t sizeOfDtStruct;
-  };
-
-  struct DeviceTreeMemoryEntry {
+  struct DeviceTreeReserveEntry {
     uint64_t address;
     uint64_t size;
   };
+
+  enum struct DeviceTreeStructureToken : uint32_t {
+    BeginNode = 0x01,
+    EndNode   = 0x02,
+    Prop      = 0x03,
+    Nop       = 0x04,
+    End       = 0x09,
+  };
   union DeviceTreeStructure {
-    uint32_t token;
+    DeviceTreeStructureToken token;
     struct {
-      uint32_t token;
-      uint32_t unitName;
+      DeviceTreeStructureToken token;
+      char unitName[];
     } beginNode;
     struct {
-      uint32_t token;
+      DeviceTreeStructureToken token;
     } endNode;
     struct {
-      uint32_t token;
+      DeviceTreeStructureToken token;
       uint32_t length;
       uint32_t offsetOfName;
-      uint32_t value;
+      char value[];
     } prop;
     struct {
-      uint32_t token;
+      DeviceTreeStructureToken token;
     } nop;
     struct {
-      uint32_t token;
+      DeviceTreeStructureToken token;
     } end;
   };
 
-  struct DeviceTreeBeginNodeStructure {
-    const char* unitName;
+  class StringList {
+    const char* const begin;
+    const char* strs;
+    size_t length;
+
+  public:
+    StringList(const char* strs, size_t length);
+    const char* next();
   };
-  struct DeviceTreeEndNodeStructure {};
-  struct DeviceTreePropStructure {
+
+  class DeviceTreeProperty {
+    lib::FixedString<31> name;
     uint32_t length;
-    uint32_t offsetOfName;
-    const char* name;
-    const char* value;
-    uint32_t u32() const;
-    uint64_t u64() const;
-    char* str() const;
+    uintptr_t value;
+
+  public:
+    DeviceTreeProperty(const char* name, uint32_t length, uintptr_t value);
+
+    const decltype(name)& getName() const;
+    uint32_t getValueAsU32() const;
+    uint64_t getValueAsU64() const;
+    const char* getValueAsString() const;
+    phandle_t getValueAsPhandle() const;
+    StringList getValueAsStringList() const;
+    void* getValueAsPointer() const;
   };
-  struct DeviceTreeNopStructure {};
-  struct DeviceTreeEndStructure {};
-
-  using DeviceTreeStructureVariant = std::variant<DeviceTreeBeginNodeStructure,
-                                                  DeviceTreeEndNodeStructure,
-                                                  DeviceTreePropStructure,
-                                                  DeviceTreeNopStructure,
-                                                  DeviceTreeEndStructure>;
-
-  class DeviceTreeStructureBlock {
-    friend class DeviceTree;
-
+  class DeviceTreeNode {
     class Iterator {
-      const DeviceTreeStructureBlock* thiz;
-      uint64_t cur;
-      uint64_t end;
+      const DeviceTreeStructure* beginStruct;
+      std::span<char> stringsBlock;
 
     public:
-      Iterator(const DeviceTreeStructureBlock* thiz,
-               uint64_t cur,
-               uint64_t end);
-      DeviceTreeStructureVariant operator*() const;
+      Iterator(const DeviceTreeStructure* beginStruct, std::span<char> stringsBlock);
       Iterator& operator++();
-      bool operator!=(const Iterator& other) const;
+      DeviceTreeNode operator*() const;
+      bool operator==(const Iterator& other) const;
     };
 
-    DeviceTree* dt;
-    uint64_t blockBegin;
-    uint64_t blockEnd;
-
-    DeviceTreeStructureBlock(DeviceTree* dt, uint64_t begin, uint64_t end);
+    const DeviceTreeStructure* beginStruct;
+    std::span<char> stringsBlock;
+    lib::FixedString<31> name;
+    std::optional<uintptr_t> unitAddress;
 
   public:
+    DeviceTreeNode(const DeviceTreeStructure* beginStruct, std::span<char> stringsBlock);
+
+    const decltype(name)& getName() const;
+    std::optional<uintptr_t> getUnitAddress() const;
+
+    std::optional<DeviceTreeNode> findNode(const char* name, bool full) const;
+    std::optional<DeviceTreeNode> findNode(phandle_t phandle) const;
+
+    std::optional<DeviceTreeProperty> findProperty(const char* name) const;
+
     Iterator begin() const;
     Iterator end() const;
-    Iterator cbegin() const;
-    Iterator cend() const;
+
+  private:
+    static const DeviceTreeStructure* next(const DeviceTreeStructure* cur);
   };
-
   class DeviceTree {
-    constexpr static uint32_t MAGIC = 0xd00dfeed;
+    std::span<DeviceTreeReserveEntry> memoryReservationBlock;
+    std::span<DeviceTreeStructure> structureBlock;
+    std::span<char> stringsBlock;
 
-    uint64_t fdtHeader;
-    uint64_t addressOfMemoryReservationBlock;
-    uint64_t addressOfStructureBlock;
-    uint64_t addressOfStringsBlock;
-
-    DeviceTreeHeader header;
-
-    DeviceTree(uint64_t fdt);
+    DeviceTreeNode rootNode;
 
   public:
-    static lib::Result<DeviceTree, lib::FixedString<>> load(uint64_t fdt);
-    lib::Result<const char*, lib::FixedString<>> getString(
-      uint32_t offset) const;
+    DeviceTree(std::span<DeviceTreeReserveEntry> memoryReservationBlock,
+               std::span<DeviceTreeStructure> structureBlock,
+               std::span<char> stringsBlock);
 
-    DeviceTreeStructureBlock getStructureBlock();
+    std::optional<DeviceTreeNode> findNode(const char* path) const;
+    std::optional<DeviceTreeNode> findNode(const char* name, bool full) const;
+    std::optional<DeviceTreeNode> findNode(phandle_t phandle) const;
   };
 } // namespace orfos::kernel::driver
 
