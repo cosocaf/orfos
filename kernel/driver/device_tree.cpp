@@ -67,7 +67,8 @@ namespace orfos::kernel::driver {
     uint64_t end)
     : thiz(thiz), cur(cur), end(end) {}
 
-  DeviceTreeStructureVariant DeviceTreeStructureBlock::Iterator::operator*() {
+  DeviceTreeStructureVariant DeviceTreeStructureBlock::Iterator::operator*()
+    const {
     auto src = reinterpret_cast<DeviceTreeStructure*>(cur);
     DeviceTreeStructureVariant dst;
     const auto token = lib::fromBigEndian(src->token);
@@ -131,7 +132,7 @@ namespace orfos::kernel::driver {
     return *this;
   }
   bool DeviceTreeStructureBlock::Iterator::operator!=(
-    const DeviceTreeStructureBlock::Iterator& other) {
+    const DeviceTreeStructureBlock::Iterator& other) const {
     return cur != other.cur;
   }
 

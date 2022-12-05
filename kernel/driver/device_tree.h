@@ -127,9 +127,9 @@ namespace orfos::kernel::driver {
       Iterator(const DeviceTreeStructureBlock* thiz,
                uint64_t cur,
                uint64_t end);
-      DeviceTreeStructureVariant operator*();
+      DeviceTreeStructureVariant operator*() const;
       Iterator& operator++();
-      bool operator!=(const Iterator& other);
+      bool operator!=(const Iterator& other) const;
     };
 
     DeviceTree* dt;
