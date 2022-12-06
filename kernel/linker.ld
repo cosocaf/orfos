@@ -41,5 +41,5 @@ SECTIONS {
   }
 
   . = ALIGN(4096);
-  PROVIDE(kernelPages = .);
+  PROVIDE(orfos_endOfKernelSections = .);
 }

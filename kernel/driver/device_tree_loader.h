@@ -52,7 +52,7 @@ namespace orfos::kernel::driver {
   class DeviceTreeLoader {
     constexpr static uint32_t MAGIC = 0xD00DFEED;
 
-    void* deviceTreeHeader;
+    const void* deviceTreeHeader;
 
     DeviceTreeHeader header;
 
@@ -65,7 +65,7 @@ namespace orfos::kernel::driver {
      *
      * @param deviceTreeHeader デバイスツリーヘッダへのポインタ
      */
-    DeviceTreeLoader(void* deviceTreeHeader);
+    DeviceTreeLoader(const void* deviceTreeHeader);
 
     /**
      * @brief デバイスツリーを読み込む

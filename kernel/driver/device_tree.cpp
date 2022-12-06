@@ -39,8 +39,11 @@ namespace orfos::kernel::driver {
   StringList DeviceTreeProperty::getValueAsStringList() const {
     return StringList(getValueAsString(), length);
   }
-  void* DeviceTreeProperty::getValueAsPointer() const {
-    return reinterpret_cast<void*>(value);
+  uintptr_t DeviceTreeProperty::getValueAsAddress() const {
+    return value;
+  }
+  size_t DeviceTreeProperty::getSize() const {
+    return length;
   }
 
   DeviceTreeNode::DeviceTreeNode(const DeviceTreeStructure* beginStruct,

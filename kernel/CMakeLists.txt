@@ -8,6 +8,9 @@ add_executable(
   boot/main.cpp
   driver/device_tree.cpp
   driver/device_tree_loader.cpp
+  driver/init.cpp
+  driver/memory/device.cpp
+  driver/uart/device.cpp
   lib/panic.cpp
   lib/libc/string.cpp
   lib/libc/stdlib.cpp

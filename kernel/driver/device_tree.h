@@ -70,7 +70,9 @@ namespace orfos::kernel::driver {
     const char* getValueAsString() const;
     phandle_t getValueAsPhandle() const;
     StringList getValueAsStringList() const;
-    void* getValueAsPointer() const;
+    uintptr_t getValueAsAddress() const;
+
+    size_t getSize() const;
   };
   class DeviceTreeNode {
     class Iterator {

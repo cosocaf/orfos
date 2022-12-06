@@ -1,17 +1,18 @@
 #include <arch/riscv.h>
-#include <driver/device_tree.h>
-#include <driver/device_tree_loader.h>
+#include <driver/init.h>
+#include <driver/uart/device.h>
+#include <lib/panic.h>
 
 namespace orfos::kernel::boot {
   [[noreturn]] void primaryMain() {
-    driver::DeviceTreeLoader devTreeLoader(static_cast<void*>(arch::stval));
-    auto& devTree = devTreeLoader.load().unwrap();
+    auto driverInitResult = driver::initialize(static_cast<void*>(arch::stval));
+    if (!driverInitResult) {
+      panic(driverInitResult.unwrapErr().c_str());
+    }
 
-    auto stdoutPath = devTree.findNode("/chosen")->findProperty("stdout-path")->getValueAsString();
-
-    auto uart                  = *devTree.findNode(stdoutPath);
-    [[maybe_unused]] auto name = uart.getName();
-    [[maybe_unused]] auto addr = uart.getUnitAddress().value_or(-1);
+    for (auto c : "Hello, World!\n") {
+      driver::uart::putc(c);
+    }
 
     while (true) {
     }

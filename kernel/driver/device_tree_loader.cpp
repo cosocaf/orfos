@@ -14,7 +14,8 @@
 #include <lib/format.h>
 
 namespace orfos::kernel::driver {
-  DeviceTreeLoader::DeviceTreeLoader(void* deviceTreeHeader) : deviceTreeHeader(deviceTreeHeader) {}
+  DeviceTreeLoader::DeviceTreeLoader(const void* deviceTreeHeader)
+    : deviceTreeHeader(deviceTreeHeader) {}
 
   lib::Result<DeviceTree, lib::FixedString<>> DeviceTreeLoader::load() {
     loadHeader();
@@ -48,7 +49,7 @@ namespace orfos::kernel::driver {
   }
 
   void DeviceTreeLoader::loadHeader() {
-    auto dth = static_cast<DeviceTreeHeader*>(deviceTreeHeader);
+    auto dth = static_cast<const DeviceTreeHeader*>(deviceTreeHeader);
 
     header.magic                          = lib::fromBigEndian(dth->magic);
     header.totalSize                      = lib::fromBigEndian(dth->totalSize);
