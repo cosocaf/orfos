@@ -116,7 +116,6 @@ namespace orfos::kernel::driver {
     auto cur  = next(beginStruct);
     int depth = 0;
     while (true) {
-      cur = next(cur);
       switch (lib::fromBigEndian(cur->token)) {
         case DeviceTreeStructureToken::BeginNode:
           ++depth;
@@ -142,6 +141,7 @@ namespace orfos::kernel::driver {
         case DeviceTreeStructureToken::End:
           return std::nullopt;
       }
+      cur = next(cur);
     }
   }
 
