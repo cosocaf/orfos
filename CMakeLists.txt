@@ -48,5 +48,5 @@ project(
 )
 
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/kernel)
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/disk)
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/user)
+# add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/disk)
+# add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/user)

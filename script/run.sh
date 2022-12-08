@@ -1,7 +1,7 @@
 #!/bin/bash -e
 
 SCRIPT_DIR=$(cd $(dirname $0); pwd)
-OS=kernel.elf
+OS=kernel
 CPUS=1
 FS=$SCRIPT_DIR/../fs.img
 
